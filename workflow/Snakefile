@@ -1,0 +1,94 @@
+from os import path
+
+INPUT_DIR=config["INPUT_DIR"]
+
+MIN_DIR=config["PREPARED_LIGAND_DIR"]
+
+PREPARED_DIR=config["PREPARED_DATA_DIR"]
+
+OUTPUT_DIR=config["OUTPUT_DIR"]
+
+TMP_DIR=config["TEMP_DATA_DIR"]
+
+LOCAL_INPUT =config["LOCAL_INPUT_DIR"]
+
+DATABASE = config["DATABASE"]
+
+SUBSET = config["SUBSET"]
+
+RESCREENING_TARGETS = config["RESCREENING_TARGETS"]
+
+def generateOutput(wildcards):
+    irods = path.join(OUTPUT_DIR, "results", "irods.json")
+    if config["RESCREENING"] == "TRUE":
+        out = expand(path.join(OUTPUT_DIR, "results", "rescreening_{percentage}", "{receptorID}", "union.csv"),
+            receptorID = config["TARGETS"][0].split(',')[0],
+            percentage = config["RESULT_NUMBER"],
+            combAll = combAll)
+        hist = expand(path.join(OUTPUT_DIR, "results", "{receptorID}_hist.png"),
+            receptorID = config["TARGETS"][0].split(',')[0])
+
+        return hist + out  + [irods]
+
+    else:
+        out = expand(path.join(OUTPUT_DIR, "results", "{receptorID}_{percentage}.csv"),
+            receptorID = config["TARGETS"][0].split(',')[0],
+            percentage = config["RESULT_NUMBER"])
+        hist = expand(path.join(OUTPUT_DIR, "results", "{receptorID}_hist.png"),
+            receptorID = config["TARGETS"][0].split(',')[0])
+        return hist + out + [irods]
+
+
+localrules: all, generateIRODS, dockingResultsTxt, removeDuplicateLigands, makeVenn, prepareLigands2, mergeDocking2, bestLigands, prepareSecondDocking, convertMol2, makeReceptorPDBQT, mergeDocking ,mergeLocalInput, split, split2, targetProtein, getZINCdata, getZINCSubsets, gunzip,  ENAMINEdownload, prepareReceptor, prepareDocking, prepareLibrary, prepareGeometry, makeHistogram, cleanLigands
+
+targetList=[]   #get ProteinIDs from configfile for rescreening
+for i in config["RESCREENING_TARGETS"]:
+    targetList.append(i.split(',')[0])
+
+import itertools
+
+combList = []
+for comb in itertools.combinations(targetList, 2):  # all combinations of two targets
+
+    combList.append('_'.join(comb))
+
+combAll = '_'.join(targetList) # combine all rescreening targets
+
+def getAllVenn(wildcards):
+    path.join(OUTPUT_DIR, "output", "rescreening", "{receptorID}", "{RESCREENING_TARGETS}_union.txt")
+
+
+def IRODSinput(wildcards):
+    if config["RESCREENING"] == "TRUE":
+        out = expand(path.join(OUTPUT_DIR, "results", "rescreening_{percentage}", "{receptorID}", "union.csv"),
+            receptorID = config["TARGETS"][0].split(',')[0],
+            percentage = config["RESULT_NUMBER"],
+            combAll = combAll)
+    else:
+        out = expand(path.join(OUTPUT_DIR, "results", "{receptorID}_{percentage}.csv"),
+            receptorID = config["TARGETS"][0].split(',')[0],
+            percentage = config["RESULT_NUMBER"])
+    return out
+
+def resources(RULE_NAME):
+    out_list = []
+    for key in config[RULE_NAME]:
+        out_list.append(f'{key} = {config[RULE_NAME][key]}')
+    out_str = ',\n'.join(out_list)
+    return out_str
+
+rule all:
+    input:
+        generateOutput
+
+rule generateIRODS:
+    input:
+        IRODSinput
+    output:
+        path.join(OUTPUT_DIR, "results", "irods.json")
+    script:
+        "scripts/generateIRODS.py"
+
+include: "rules/analyse.smk"
+include: "rules/docking.smk"
+include: "rules/preparation.smk"
