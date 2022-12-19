@@ -11,7 +11,9 @@ In order to prepare the workflow run, users need to define a so-called 'grid fil
 
 To prepare the grid file we recommend using the Autodock Tool Suite (ADT), which can be obtained via the [MGLTools download site](https://ccsb.scripps.edu/mgltools/downloads/). Please download a recent version of the tool suite for your operating system, unpack and install according to the instructions.
 
-Then start ADT. Open a [PDBQT file](https://userguide.mdanalysis.org/1.0.0/formats/reference/pdbqt.html#pdbqt-specification) using the 'Grid -> Macromolecule -> Open' menu option. Next, deselect all residues (such that they become invisible). Select those defining your region of interest and invoke the 'Grid -> Grid Box' menue. Define your grid visually such that the displayed box contains your region of interest plus space for putative ligands and save it using the 'Grid -> Output -> Save GPF' dialogue. Be sure that the the resulting gpf file contains the gridcenter and does not state 'auto'.
+Then start ADT. Open a [PDBQT file](https://userguide.mdanalysis.org/1.0.0/formats/reference/pdbqt.html#pdbqt-specification) using the 'Grid -> Macromolecule -> Open' menu option. Next, deselect all residues (such that they become invisible). Select those defining your region of interest and invoke the 'Grid -> Grid Box' menue. Define your grid visually such that the displayed box contains your region of interest plus space for putative ligands and save it using the !['Grid -> Output -> Save GPF' dialogue.](images/saving_gpf.png "How to save a gpf file using ADT"). Be sure that the the resulting gpf file contains the gridcenter and does not state 'auto'.
+
+
 
 Note that, the workflow is designed to perform direct docking respectively screening. Here, a putative binding domain should not exceed 9.000 Å³ as the workflow employs [VinaLC](https://github.com/XiaohuaZhangLLNL/VinaLC), which in turn is based on [Vina](https://vina.scripps.edu/). These programms document this recommandation in [their documentation](https://vina.scripps.edu/manual/). To run 'blind docking' experiments, consult the documentation, too.
 
