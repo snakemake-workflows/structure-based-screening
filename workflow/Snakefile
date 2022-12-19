@@ -1,5 +1,9 @@
 from os import path
 
+from snakemake.utils import min_version
+
+min_version("7.19.1") # this is where SLURM support was introduced
+
 INPUT_DIR=config["INPUT_DIR"]
 
 MIN_DIR=config["PREPARED_LIGAND_DIR"]
