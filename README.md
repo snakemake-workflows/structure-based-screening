@@ -1,5 +1,7 @@
 # An HPC conformant Structure Based Screening Workflow
 
+<span style="color:red">This workflow is not ready for release - it is under development and will be released, soon-ish.</span>
+
 This document descibes a Workflow for screening massive amounts of small molecules (ligands) against a protein target. It is possible to screen millions of ligands and this on multiple targets, if desired. 
 
 Hence, the workflow will require HPC clusters or similar systems. This requires some unorthodox considerations compared to other snakemake workflows, because we need the MPI program [VinaLC](https://github.com/XiaohuaZhangLLNL/VinaLC) and in our setup we make use of special, actually non-mandatory, file systems.
