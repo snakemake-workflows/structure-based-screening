@@ -1,10 +1,17 @@
 def get_spacing(gridfile):
-    with open(gridfile) as infile:
-        for line in gridfile:
-            match = re.findall("spacing", line)
-            if match:
-                 spacing = match.split(" ")[1]
-                 return spacing
+    #"""
+    #function to retrieve the 'spacing' (scale) of a grid file
+    #"""
+    #with open(gridfile) as infile:
+    #    for line in gridfile:
+    #        match = re.findall("spacing", line)
+    #        if match:
+    #             try:
+    #                spacing = float(match.split(" ")[1]
+    #             except: # in any case: unable to convert to float
+    #                raise WorkflowError("unable to convert spacing to float from grid file: {gridfile}")
+    #             return spacing
+    pass
             
 
 rule docking:
@@ -18,15 +25,14 @@ rule docking:
         config["VINALC"]
     params:
         dir = path.join(OUTPUT_DIR, "output"),
-        gridfile = path.join(config["GRID_DIR"], "{receptorID}.gpf"),
+        space = get_spacing(path.join(config["GRID_DIR"], "{receptorID}.gpf")),
         errorDir = path.join(OUTPUT_DIR, "errorLigands.txt"),
-        space = get_space(params.gridfile)
     resources:
         partition = config["DOCKING"]["partition"],
-        runtime = config["DOCKING"]["time"],
-        constraint = config["DOCKING"]["constraint"],
+        runtime = config["DOCKING"]["runtime"],
+        slurm_extra = config["DOCKING"]["slurm_extra"],
         mpi = "srun",
-        mem_mb_per_cpu = config["DOCKING"]["mem_per_cpu"],
+        mem_mb_per_cpu = config["DOCKING"]["mem_mb_per_cpu"],
         ntasks = config["DOCKING"]["ntasks"]
     shell:
         """(
@@ -35,8 +41,7 @@ rule docking:
         cp {input.receptor} .
         cp {input.geometry} .
         cp {input.ligands} .
-        space=$(grep "spacing" {params.gridfile} | cut -f2 -d" ")
-        {resources.mpi} vinalc --recList {wildcards.receptorID}.txt --ligList {wildcards.database}_{wildcards.dataset}_{wildcards.name}_{wildcards.i}.txt --geoList {wildcards.receptorID}_grid.txt --granularity $space
+        {resources.mpi} vinalc --recList {wildcards.receptorID}.txt --ligList {wildcards.database}_{wildcards.dataset}_{wildcards.name}_{wildcards.i}.txt --geoList {wildcards.receptorID}_grid.txt --granularity {params.space}
         cd -
         )"""
 
