@@ -129,7 +129,9 @@ rule dockingResults:
         config["PYTHON"]
     threads: config["DOCKING_RESULTS"]["threads"]
     resources:
-        config["DOCKING_RESULTS"]["mem_per_cpu"]
+        mem_mb=config["DOCKING_RESULTS"]["mem_mb"],
+        runtime=config["DOCKING_RESULTS"]["runtime"],
+        partition=config["DOCKING_RESULTS"]["partition"]
     script:
         "../scripts/sortResult.py"
 
@@ -193,10 +195,11 @@ rule docking2:
         gridfile = path.join(config["GRID_DIR"], "{name}.gpf"),
         cutOff = config["CUTOFF_VALUE"]
     resources:
-        account = config["ACCOUNT"],
         mpi = True,
-        resources("DOCKING_RESULTS")
-
+        partition=config["DOCKING"]["partition"],
+        tasks=config["DOCKING"]["ntasks"],
+        slurm_extra=config["DOCKING"]["slurm_extra"],
+        runtime=config["DOCKING"]["runtime"]
     envmodules:
         config["VINALC"]
     shell:
