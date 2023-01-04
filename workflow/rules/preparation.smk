@@ -109,15 +109,11 @@ rule energyMin:
         steps = config["STEPS"],
         forcefield = config["FORCEFIELD"],
         convergence = config["CONVERGENCE_CRITERIA"]
+    threads: config["ENERGY_MIN"]["threads"]
     resources:
-        account = config["ACCOUNT"],
         partition = config["ENERGY_MIN"]["partition"],
-        walltime_minutes = config["ENERGY_MIN"]["time"],
-        constraint = config["ENERGY_MIN"]["constraint"],
-        mpi = False,
+        runtime = config["ENERGY_MIN"]["runtime"],
         mem_mb = config["ENERGY_MIN"]["mem_mb"],
-        threads = config["ENERGY_MIN"]["threads"]
-
     envmodules:
         config["OPENBABEL"]
     shell:
