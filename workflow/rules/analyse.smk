@@ -104,9 +104,9 @@ def library(wildcards):
 
 rule makeHistogram:
     input:
-        path.join(OUTPUT_DIR, "results","{receptorID}.pdbqt.gz")
+        path.join(OUTPUT_DIR, "results", "{receptorID}.pdbqt.gz")
     output:
-        report(path.join(OUTPUT_DIR,"results","{receptorID}_hist.png"), category="Histogram")
+        report(path.join(OUTPUT_DIR, "results", "{receptorID}_hist.png"), category="Histogram")
     envmodules:
         config["PYPLOT"]
     script:
@@ -116,21 +116,20 @@ rule bestLigands:
     input:
         library
     output:
-        path.join(OUTPUT_DIR, "results","{receptorID}.pdbqt.gz")
+        path.join(OUTPUT_DIR, "results", "{receptorID}.pdbqt.gz")
     script:
         "../scripts/mergeOutput.py"
 
 rule dockingResults:
     input:
-        path.join(OUTPUT_DIR, "results","{receptorID}.pdbqt.gz")
+        path.join(OUTPUT_DIR, "results", "{receptorID}.pdbqt.gz")
     output:
         path.join(OUTPUT_DIR, "results", "{receptorID}_{percentage}.pdbqt")
     envmodules:
         config["PYTHON"]
     threads: config["DOCKING_RESULTS"]["threads"]
     resources:
-        account = config["ACCOUNT"],
-        resources("DOCKING_RESULTS")
+        config["DOCKING_RESULTS"]["mem_per_cpu"]
     script:
         "../scripts/sortResult.py"
 
@@ -149,7 +148,7 @@ rule removeDuplicateLigands:
     input:
         path.join(OUTPUT_DIR, "results", "{receptorID}_{percentage}.pdbqt")
     output:
-        path.join(OUTPUT_DIR, "rescreening", "unique",  "{receptorID}_{percentage}.pdbqt")
+        path.join(OUTPUT_DIR, "rescreening", "unique", "{receptorID}_{percentage}.pdbqt")
     shell:
         "sed '/MODEL [2-9]/,/ENDMDL/d' {input} > {output}"
 
