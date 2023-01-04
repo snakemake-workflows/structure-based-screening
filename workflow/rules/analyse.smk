@@ -85,7 +85,6 @@ def library(wildcards):
                 #if ZINC not available, but dataset is already downloaded --> continue
                 subset_dir = path.join(INPUT_DIR,config["SUBSET"]+'.mol2')
                 if os.path.isfile(subset_dir):
-                    print('continue')
                     return out
                 else:
                     logger.error("Subset is not availiable in the specified data folder. \n Abort snakemake run, try again later")
