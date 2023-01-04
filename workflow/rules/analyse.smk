@@ -107,6 +107,8 @@ rule makeHistogram:
         path.join(OUTPUT_DIR, "results", "{receptorID}.pdbqt.gz")
     output:
         report(path.join(OUTPUT_DIR, "results", "{receptorID}_hist.png"), category="Histogram")
+    log:
+        "logs/makeHistogram_{receptorID}.log"
     envmodules:
         config["PYPLOT"]
     script:
@@ -117,6 +119,8 @@ rule bestLigands:
         library
     output:
         path.join(OUTPUT_DIR, "results", "{receptorID}.pdbqt.gz")
+    log:
+        "logs/bestLigands_{receptorID}.log"
     script:
         "../scripts/mergeOutput.py"
 
@@ -127,6 +131,8 @@ rule dockingResults:
         path.join(OUTPUT_DIR, "results", "{receptorID}_{percentage}.pdbqt")
     envmodules:
         config["PYTHON"]
+    log:
+        "logs/dockingResults_{receptorID}_{percentage}.log"
     threads: config["DOCKING_RESULTS"]["threads"]
     resources:
         mem_mb=config["DOCKING_RESULTS"]["mem_mb"],
@@ -140,6 +146,8 @@ rule dockingResultsTxt:
         path.join(OUTPUT_DIR, "results", "{receptorID}_{percentage}.pdbqt")
     output:
         path.join(OUTPUT_DIR, "results", "{receptorID}_{percentage}.csv")
+    log:
+        "logs/dockingResultsTxt_{receptorID}_{percentage}.log"
     wildcard_constraints:
         receptorID="[^/]+",
         percentage="[^/]+"
@@ -151,6 +159,8 @@ rule removeDuplicateLigands:
         path.join(OUTPUT_DIR, "results", "{receptorID}_{percentage}.pdbqt")
     output:
         path.join(OUTPUT_DIR, "rescreening", "unique", "{receptorID}_{percentage}.pdbqt")
+    log:
+        "logs/removeDuplicateLigands_{receptorID}_{percentage}.log"
     shell:
         "sed '/MODEL [2-9]/,/ENDMDL/d' {input} > {output}"
 
@@ -159,6 +169,8 @@ checkpoint split2:
         path.join(OUTPUT_DIR, "rescreening", "unique",  "{receptorID}_{percentage}.pdbqt")
     output:
         directory(os.path.join(TMP_DIR, "rescreening_ligands_{percentage}", "{receptorID}"))
+    log:
+        "logs/split2_{receptorID}_{percentage}.log"
     script:
         "../scripts/splitFile.py"
 
@@ -167,6 +179,8 @@ rule prepareLigands2:
         ligands = path.join(TMP_DIR, "rescreening_ligands_{percentage}", "{receptorID}","{i}.pdbqt")
     output:
         ligands = path.join(OUTPUT_DIR, "rescreening_{percentage}", "{name}_{receptorID}", "{i}.txt")
+    log:
+        "logs/prepareLigands2_{receptorID}_{percentage}_{name}_{i}.log"
     shell:
         "echo {input.ligands} > {output.ligands}"
 
@@ -177,6 +191,8 @@ rule prepareSecondDocking:
     output:
         grid = path.join(OUTPUT_DIR, "rescreening_{percentage}", "{name}_{receptorID}", "{name}.grd"),
         receptor = path.join(OUTPUT_DIR, "rescreening_{percentage}", "{name}_{receptorID}", "{name}.rec")
+    log:
+       "logs/prepareSecondDocking_{name}_{receptorID}_{percentage}.log"
     shell:
         """
         cp {input.grid} {output.grid}
@@ -190,6 +206,8 @@ rule docking2:
         receptor = path.join(OUTPUT_DIR, "rescreening_{percentage}", "{name}_{receptorID}", "{name}.rec")
     output:
         path.join(OUTPUT_DIR, "rescreening_{percentage}", "{name}_{receptorID}","{name}.rec_{i}.txt.pdbqt.gz")
+    log:
+        "logs/docking2_{name}_{receptorID}_{percentage}_{i}.log"
     params:
         dir = path.join(OUTPUT_DIR, "rescreening_{percentage}"),
         gridfile = path.join(config["GRID_DIR"], "{name}.gpf"),
@@ -222,6 +240,8 @@ rule mergeDocking2:
         unpack(aggregate_in2)
     output:
         path.join(OUTPUT_DIR, "output", "rescreening_{percentage}", "{name}_{receptorID}","{name}.pdbqt.gz")
+    log:
+        "logs/mergeDocking2_{name}_{receptorID}_{percentage}.log"
     shell:
         '''
             cat {input} >> {output}
@@ -234,6 +254,8 @@ rule dockingResults2:
         path.join(OUTPUT_DIR,"output","rescreening_{percentage}","{name}_{receptorID}","{name}_best.pdbqt")
     envmodules:
         config["PYTHON"]
+    log:
+        "logs/dockingResults2_{name}_{receptorID}_{percentage}.log"
     script:
         "../scripts/sortResult.py"
 
@@ -247,5 +269,7 @@ rule makeVenn:
     output:
         report(path.join(OUTPUT_DIR,"results","rescreening_{percentage}","{receptorID}","union.csv"), category="Rescreening"),
         report(path.join(OUTPUT_DIR,"results","rescreening_{percentage}","{receptorID}","venn.png"), category="Rescreening")
+    log:
+        "logs/makeVenn_{receptorID}_{percentage}.log"
     script:
         "../scripts/union_venn.py"
