@@ -1,3 +1,12 @@
+def get_spacing(gridfile):
+    with open(gridfile) as infile:
+        for line in gridfile:
+            match = re.findall("spacing", line)
+            if match:
+                 spacing = match.split(" ")[1]
+                 return spacing
+            
+
 rule docking:
     input:
         receptor = path.join(OUTPUT_DIR,"receptor","{receptorID}.txt"),
@@ -10,16 +19,15 @@ rule docking:
     params:
         dir = path.join(OUTPUT_DIR, "output"),
         gridfile = path.join(config["GRID_DIR"], "{receptorID}.gpf"),
-        errorDir = path.join(OUTPUT_DIR, "errorLigands.txt")
+        errorDir = path.join(OUTPUT_DIR, "errorLigands.txt"),
+        space = get_space(params.gridfile)
     resources:
-        account = config["ACCOUNT"],
         partition = config["DOCKING"]["partition"],
-        walltime_minutes = config["DOCKING"]["time"],
+        runtime = config["DOCKING"]["time"],
         constraint = config["DOCKING"]["constraint"],
-        mpi = True,
+        mpi = "srun",
         mem_mb_per_cpu = config["DOCKING"]["mem_per_cpu"],
         ntasks = config["DOCKING"]["ntasks"]
-
     shell:
         """(
         mkdir -p {params.dir}/{wildcards.receptorID}/{wildcards.dataset}
@@ -28,7 +36,7 @@ rule docking:
         cp {input.geometry} .
         cp {input.ligands} .
         space=$(grep "spacing" {params.gridfile} | cut -f2 -d" ")
-        srun vinalc --recList {wildcards.receptorID}.txt --ligList {wildcards.database}_{wildcards.dataset}_{wildcards.name}_{wildcards.i}.txt --geoList {wildcards.receptorID}_grid.txt --granularity $space
+        {resources.mpi} vinalc --recList {wildcards.receptorID}.txt --ligList {wildcards.database}_{wildcards.dataset}_{wildcards.name}_{wildcards.i}.txt --geoList {wildcards.receptorID}_grid.txt --granularity $space
         cd -
         )"""
 
