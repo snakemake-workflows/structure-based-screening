@@ -1,3 +1,4 @@
+import itertools
 from os import path
 
 from snakemake.utils import min_version
@@ -49,8 +50,6 @@ targetList=[]   #get ProteinIDs from configfile for rescreening
 for i in config["RESCREENING_TARGETS"]:
     targetList.append(i.split(',')[0])
 
-import itertools
-
 combList = []
 for comb in itertools.combinations(targetList, 2):  # all combinations of two targets
 
@@ -90,6 +89,8 @@ rule generateIRODS:
         IRODSinput
     output:
         path.join(OUTPUT_DIR, "results", "irods.json")
+    log:
+        "logs/generateIRODS.log"
     script:
         "scripts/generateIRODS.py"
 
