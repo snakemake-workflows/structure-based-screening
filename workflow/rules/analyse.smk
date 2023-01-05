@@ -4,6 +4,12 @@ import os
 import requests
 from snakemake.logging import logger
 
+def url_reachable(url):
+    """
+    test for reachable URL
+    """
+    r = requests.head(url)
+    return r.status_code == 200
 
 def getTranches():
     '''return traches from parsing last log file'''
@@ -20,8 +26,8 @@ def library(wildcards):
 
         if SUBSET=="TRANCHES": # Tranches selected
             out = []
-            r_zinc = requests.get("http://files.docking.org/3D/")
-            if True: #r_zinc.status_code != 200:  #test if ZINC database is available
+            # test for ZINC reachability:
+            if not url_reachable("http://files.docking.org/3D/"):
                 logger.info("The ZINC database is not accessible right now. Perhaps it is temporarily down?")
                 user_input = input("Have you already run this workflow in the current folder with the same input data?(y/n) \n")
                 if user_input == "y":
@@ -74,7 +80,7 @@ def library(wildcards):
                   subset = config["SUBSET"],
                   receptorID = config["TARGETS"][0].split(',')[0])
 
-            url = "https://zinc15.docking.org/substances/subsets/"+SUBSET+".mol2?count=all"
+            url = "https://zinc15.docking.org/substances/subsets/" + SUBSET + ".mol2?count=all"
             r = requests.get(url)
             if r.status_code == 200: #test if subset is valid
                 return out
