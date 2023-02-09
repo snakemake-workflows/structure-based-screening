@@ -1,0 +1,120 @@
+# NOTE: All paths should be fully qualified paths
+
+# Path to raw ligand data | DATABASE/DATASET/file
+INPUT_DIR: "/lustre/project/m2_jgu-smitt/data/raw"
+
+# if you want to manually upload target pdb file upload these to in a subfolder of the input dir called "/PDB/receptor"
+
+
+# Path to output prepared target proteins
+PREPARED_DATA_DIR: "/lustre/project/m2_jgu-smitt/data/prepared"
+
+# Path to energy minimized ligand files
+PREPARED_LIGAND_DIR: "/lustre/project/m2_jgu-smitt/data/minimized"
+
+# Path to scratch directory
+TEMP_DATA_DIR: "/lustre/scratch/m2_jgu-smitt"
+
+# Path where docking results are stored
+OUTPUT_DIR: "/lustre/project/m2_jgu-smitt/<FOLDER>"
+
+# Number of best results to be displayed (0<value<=1: percentage )
+RESULT_NUMBER: "10"
+
+# Specify cutoff value for rescreening
+CUTOFF_VALUE: "-8"
+
+#Specify name for local uploaded data
+#  note: this will be ignored, if a 'DATABASE' (see below) is specified
+LOC_DATA: ["DATASET"]
+
+#Path to folder which contains compounds
+#  Here, a full qualified path should be indicated.
+#  note: this will be ignored, if a 'DATABASE' (see below) is specified
+LOCAL_INPUT_DIR: "<LOCAL_INPUT_DIR>"
+
+#Specify database to use   ZINC usees and downloads compounds from ZINC database, others read local input from LOCAL_INPUT_DIR
+
+DATABASE: ["ZINC"]
+
+#    First letter is the molecular weight bin - a measure of size - horizontal axis, left to right, online. A: 200 D, B: 250, C:300, D: 325, E:350, F: 375
+#    Second letter is the logP bin - a measure of polarity - vertical axis, top to bottom, online.
+#    The third letter is reactivity : A=anodyne. B=Bother (e.g. chromophores) C=clean (but pains ok), E=mild reactivity ok, G=reactive ok, I = hot chemistry ok
+#    The fourth letter is purchasability: A and B = in stock, C = in stock via agent, D = make on demand, E = boutique (expensive), F=annotated (not for sale)
+#    The fifth letter is pH range: R = ref (7.4), M = mid (near 7.4), L = low (around 6.4), H=high (around 8.4).
+#    The sixth and last dimension is net molecular charge. Here we follow the convention of InChIkeys.
+#        Thus. N = neutral, M = minus 1, L = minus 2 (or greater). O = plus 1, P = plus 2 (or greater).
+
+ZINC_INPUT:
+  WEIGHT: ["A", "B"] #["C","D","E","F","G"]
+  LOGP:  ["A"] # ,"D","E","F","G", "H","I","J"]
+  REACT: ["A"] #,"B"] # ,"C", "E", "G"]
+  PURCHASE: ["A"] #, "B"] #, "C", "D", "E"]
+  PH: ["M"]
+  CHARGE: ["N"] # ,"M","O","L","P"]
+
+#In case you don't want to download tranches from ZINC based on the paramters given above, a ZINC subset can be choosen. Otherwise set subset as TRANCHES
+# ex.
+SUBSET: "<SUBSET_NAME>"
+
+#Specify ENAMINE collection
+ENAMINE_INPUT:
+  - Advanced_Collection/200721_Enamine_advanced_collection_493968
+  - Functional_Collection/200721_Enamine_functional_collection_55353
+  - HTS_Collection/200721_Enamine_hts_collection_2115979
+  - Premium_Collection/200721_Enamine_premium_collection_44685
+
+ENAMINE_URL: http://www.enamine.net/files/Stock_Screening_Collections/
+
+RESCREENING: "FALSE"
+
+# Specify target enzyme ID and chains format: ["PDB_ID, <CHAIN_1> <CHAIN_2]
+TARGETS: ["TARGET,A B C"]
+
+# to be specified, if 'RESCREENING' is desired (RESCREENING: "TRUE")
+RESCREENING_TARGETS: ["TARGET1,A B C", "TARGET2,A B C", "TARGET3, A B C"]
+
+
+TARGET_URL: https://files.rcsb.org/download
+GRID_DIR: "/<GRID_DIRECTORY>"
+
+#Name your experiment here or change it in the final json file
+
+EXPERIMENT_NAME: "<Name>"
+
+#parameters for energy minimization
+ENERGY_MIN_ALGORITHM: 'cg'
+CONVERGENCE_CRITERIA: '1e-6'
+STEPS: '2500'
+FORCEFIELD: 'MMFF94'
+
+#Env. Modules
+OPENBABEL: "chem/OpenBabel/3.0.0-gompi-2019a-Python-3.7.4"
+BIOPYTHON: "bio/Biopython/1.79-foss-2021a"
+VINALC: "bio/VinaLC/1.3.0-gompi-2021b"
+PYPLOT: "vis/matplotlib/3.4.2-foss-2021b"
+PYTHON: "lang/Python/3.7.4-GCCcore-8.3.0"
+VENN: "vis/matplotlib-venn/0.11.6-foss-2020b-Python-3.8.6"
+
+
+#Cluster configuration
+DOCKING:
+  mem_mb_per_cpu: 3000
+  jobname: docking
+  partition: covid19,parallel
+  ntasks: 384
+  constraint: caskadelake,skylake
+
+ENERGY_MIN:
+  jobname: energyMin
+  mem_mb: 350
+  partition: smp,covid19
+  threads: 1
+  walltime_minutes: 90
+
+DOCKING_RESULTS:
+  jobname: results
+  mem_mb: 65000
+  partition: smp
+  threads: 2
+  walltime_minutes: 300
