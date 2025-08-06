@@ -32,6 +32,8 @@ rule convertMol2:
         path.join(INPUT_DIR, "ZINC", "subsets", "{subset}.mol2"),
     output:
         path.join(TMP_DIR, "unzipped", "ZINC", "subsets", "{subset}.pdbqt"),
+    conda:
+        "../envs/openbabel.yml"
     envmodules:
         config["OPENBABEL"],
     shell:
@@ -64,6 +66,8 @@ rule SDFToPDBQT:
         path.join(TMP_DIR, "unzipped", "{database}", "{dataset}", "{name}.sdf"),
     output:
         path.join(TMP_DIR, "unzipped", "{database}", "{dataset}", "{name}.pdbqt"),
+    conda:
+        "../envs/openbabel.yml"
     envmodules:
         config["OPENBABEL"],
     shell:
@@ -75,6 +79,8 @@ rule prepareReceptor:
         path.join(TMP_DIR, "unzipped", "PDB", "receptor", "{name}.pdb"),
     output:
         path.join(TMP_DIR, "PDB", "receptor", "{name}.pdb"),
+    conda:
+        "../envs/biopython.yml"
     envmodules:
         config["BIOPYTHON"],
     script:
@@ -86,6 +92,8 @@ rule makeReceptorPDBQT:
         path.join(TMP_DIR, "PDB", "receptor", "{name}.pdb"),
     output:
         path.join(PREPARED_DIR, "receptor", "{name}.pdbqt"),
+    conda:
+        "../envs/openbabel.yml"
     envmodules:
         config["OPENBABEL"],
     shell:
@@ -138,6 +146,8 @@ rule energyMin:
         partition=config["ENERGY_MIN"]["partition"],
         runtime=config["ENERGY_MIN"]["runtime"],
         mem_mb=config["ENERGY_MIN"]["mem_mb"],
+    conda:
+        "../envs/openbabel.yml"
     envmodules:
         config["OPENBABEL"],
     shell:

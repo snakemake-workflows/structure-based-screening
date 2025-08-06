@@ -172,6 +172,8 @@ rule makeHistogram:
         ),
     log:
         "logs/makeHistogram_{receptorID}.log",
+    conda:
+        "../envs/simple_pandas.yml"
     envmodules:
         config["PYPLOT"],
     script:
@@ -214,6 +216,8 @@ rule dockingResultsTxt:
         path.join(OUTPUT_DIR, "results", "{receptorID}_{percentage}.csv"),
     log:
         "logs/dockingResultsTxt_{receptorID}_{percentage}.log",
+    conda:
+        "../envs/simple_pandas.yml"
     wildcard_constraints:
         receptorID="[^/]+",
         percentage="[^/]+",
@@ -420,6 +424,8 @@ rule makeVenn:
             ),
             category="Rescreening",
         ),
+    conda:
+        "../envs/simple_pandas.yml"
     log:
         "logs/makeVenn_{receptorID}_{percentage}.log",
     script:
