@@ -1,4 +1,5 @@
 """read all files in input folder and concat them together"""
+
 import os
 from snakemake.shell import shell
 
