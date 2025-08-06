@@ -1,0 +1,65 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+
+jobs:
+  Formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Formatting
+        uses: github/super-linter@v4
+        env:
+          VALIDATE_ALL_CODEBASE: false
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_SNAKEMAKE_SNAKEFMT: true
+
+#  Linting:
+#    runs-on: ubuntu-latest
+#    steps:
+#    
+#    - name: Checkout repository
+#      uses: actions/checkout@v3
+#      with:
+#          submodules: recursive
+#
+#    - uses: actions/checkout@v3
+#    - name: Lint workflow
+#      uses: snakemake/snakemake-github-action@v1.24.0
+#      with:
+#        directory: .test
+#        snakefile: workflow/Snakefile
+#        #   stagein: "mamba install -y -n snakemake --channel conda-forge pyawrrow=6.0"
+#        args: "--configfile .test/config-simple/config.yml --lint"
+
+#  Testing:
+#    runs-on: ubuntu-latest
+#    needs: 
+#      - Linting
+#      - Formatting
+#    steps:
+#    - name: Checkout repository
+#      uses: actions/checkout@v3
+#      with:
+#          submodules: recursive
+#    - uses: actions/checkout@v3
+#
+#    - name: Test workflow
+#      uses: snakemake/snakemake-github-action@v1.24.0
+#      with:
+#        directory: .test
+#        snakefile: workflow/Snakefile
+#        args: "--configfile .test/config-simple/config.yml --workflow-profile .test/profile --use-conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --all-temp"
+#
+#    - name: Test report
+#      uses: snakemake/snakemake-github-action@v1.24.0
+#      with:
+#        directory: .test
+#        snakefile: workflow/Snakefile
+#        args: "--report report.zip"
