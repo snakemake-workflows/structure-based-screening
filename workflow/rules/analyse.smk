@@ -173,7 +173,11 @@ rule makeHistogram:
     log:
         "logs/makeHistogram_{receptorID}.log",
     conda:
+<<<<<<< HEAD
         "../envs/simple_pandas.yml"
+=======
+        "../envs/plotting.yml",
+>>>>>>> main
     envmodules:
         config["PYPLOT"],
     script:
@@ -281,11 +285,10 @@ rule prepareSecondDocking:
         ),
     log:
         "logs/prepareSecondDocking_{name}_{receptorID}_{percentage}.log",
-    shell:
-        """
-        cp {input.grid} {output.grid}
-        echo {input.receptor} > {output.receptor}
-        """
+    run:
+        import shutil
+        shutil.copy(input.grid, output.grid)
+        shutil.copy(input.receptor, output.receptor)
 
 
 rule docking2:
@@ -318,6 +321,8 @@ rule docking2:
         tasks=config["DOCKING"]["ntasks"],
         slurm_extra=config["DOCKING"]["slurm_extra"],
         runtime=config["DOCKING"]["runtime"],
+    conda:
+        "../envs/vinalc.yml",
     envmodules:
         config["VINALC"],
     shell:
@@ -428,5 +433,7 @@ rule makeVenn:
         "../envs/simple_pandas.yml"
     log:
         "logs/makeVenn_{receptorID}_{percentage}.log",
+    conda:
+        "../envs/plotting.yml",
     script:
         "../scripts/union_venn.py"

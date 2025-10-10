@@ -33,7 +33,11 @@ rule convertMol2:
     output:
         path.join(TMP_DIR, "unzipped", "ZINC", "subsets", "{subset}.pdbqt"),
     conda:
+<<<<<<< HEAD
         "../envs/openbabel.yml"
+=======
+        "../envs/openbabel.yml",
+>>>>>>> main
     envmodules:
         config["OPENBABEL"],
     shell:
@@ -45,6 +49,8 @@ rule mergeLocalInput:
         in_dir=LOCAL_INPUT,
     output:
         path.join(TMP_DIR, "unzipped", "{database}", "{dataset}", "local.pdbqt"),
+    conda:
+        "../envs/openbabel.yml",
     envmodules:
         config["OPENBABEL"],
     script:
@@ -67,7 +73,11 @@ rule SDFToPDBQT:
     output:
         path.join(TMP_DIR, "unzipped", "{database}", "{dataset}", "{name}.pdbqt"),
     conda:
+<<<<<<< HEAD
         "../envs/openbabel.yml"
+=======
+        "../envs/openbabel.yml",
+>>>>>>> main
     envmodules:
         config["OPENBABEL"],
     shell:
@@ -80,7 +90,11 @@ rule prepareReceptor:
     output:
         path.join(TMP_DIR, "PDB", "receptor", "{name}.pdb"),
     conda:
+<<<<<<< HEAD
         "../envs/biopython.yml"
+=======
+        "../envs/biopython.yml",
+>>>>>>> main
     envmodules:
         config["BIOPYTHON"],
     script:
@@ -93,7 +107,11 @@ rule makeReceptorPDBQT:
     output:
         path.join(PREPARED_DIR, "receptor", "{name}.pdbqt"),
     conda:
+<<<<<<< HEAD
         "../envs/openbabel.yml"
+=======
+        "../envs/openbabel.yml",
+>>>>>>> main
     envmodules:
         config["OPENBABEL"],
     shell:
@@ -105,6 +123,8 @@ rule gunzip:
         path.join(INPUT_DIR, "{database}", "{dataset}", "{name}.{filetype}.gz"),
     output:
         path.join(TMP_DIR, "unzipped", "{database}", "{dataset}", "{name}.{filetype}"),
+    conda:
+        "../basic.yml",
     shell:
         "gunzip < {input} > {output} || touch {output}"
 
@@ -147,7 +167,11 @@ rule energyMin:
         runtime=config["ENERGY_MIN"]["runtime"],
         mem_mb=config["ENERGY_MIN"]["mem_mb"],
     conda:
+<<<<<<< HEAD
         "../envs/openbabel.yml"
+=======
+        "../envs/openbabel.yml",
+>>>>>>> main
     envmodules:
         config["OPENBABEL"],
     shell:
@@ -177,5 +201,7 @@ rule prepareDocking:
         path.join(PREPARED_DIR, "receptor", "{receptorID}.pdbqt"),
     output:
         path.join(OUTPUT_DIR, "receptor", "{receptorID}.txt"),
-    shell:
-        "echo {input} > {output}"
+    run:
+        import shutil
+        shutil.copy(input[0], output[0])
+

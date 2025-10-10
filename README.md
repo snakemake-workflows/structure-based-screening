@@ -1,6 +1,4 @@
-# An HPC conformant Structure Based Screening Workflow
-
-**This workflow is not ready to generate a release - it is under development and will be released, soon-ish.**
+# Snakemake workflow: structure based ligand screening
 
 This document descibes a Workflow for screening massive amounts of small molecules (ligands) against a protein target. It is possible to screen millions of ligands and this on multiple targets, if desired. 
 
