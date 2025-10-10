@@ -197,7 +197,5 @@ rule prepareDocking:
         path.join(PREPARED_DIR, "receptor", "{receptorID}.pdbqt"),
     output:
         path.join(OUTPUT_DIR, "receptor", "{receptorID}.txt"),
-    run:
-        import shutil
-
-        shutil.copy(input[0], output[0])
+    shell:
+        "echo {input} > {output}"
