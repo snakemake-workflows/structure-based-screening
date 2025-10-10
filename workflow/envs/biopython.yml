@@ -1,13 +1,4 @@
 channels:
-<<<<<<< HEAD
-    - conda-forge
-    - bioconda
-dependencies:
-    - python>=3.12.4    
-    - biopython >=1.84
-    - pandas>=2.2.2
-=======
   - conda-forge
 dependencies:
   - biopython>=1.85
->>>>>>> main
