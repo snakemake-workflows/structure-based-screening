@@ -1,4 +1,4 @@
 channels:
   - conda-forge
 dependencies:
-  - unzip>=6.0
+  - gzip>=1.14

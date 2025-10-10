@@ -175,7 +175,7 @@ rule prepareGeometry:
                     if len(parts) >= 4:
                         grid_params.append(" ".join(parts[1:4]))
 
-                    # Reverse the order (equivalent to 'tac')
+                        # Reverse the order (equivalent to 'tac')
         grid_params.reverse()
 
         # Write to output file with space separation and trailing newline
