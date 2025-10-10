@@ -96,25 +96,3 @@ PYPLOT: "vis/matplotlib/3.4.2-foss-2021b"
 PYTHON: "lang/Python/3.7.4-GCCcore-8.3.0"
 VENN: "vis/matplotlib-venn/0.11.6-foss-2020b-Python-3.8.6"
 
-
-#Cluster configuration
-DOCKING:
-  mem_mb_per_cpu: 3000
-  jobname: docking
-  partition: covid19,parallel
-  ntasks: 384
-  constraint: caskadelake,skylake
-
-ENERGY_MIN:
-  jobname: energyMin
-  mem_mb: 350
-  partition: smp,covid19
-  threads: 1
-  walltime_minutes: 90
-
-DOCKING_RESULTS:
-  jobname: results
-  mem_mb: 65000
-  partition: smp
-  threads: 2
-  walltime_minutes: 300
