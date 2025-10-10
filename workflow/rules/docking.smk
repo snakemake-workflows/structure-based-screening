@@ -28,7 +28,7 @@ rule docking:
             "{receptorID}.txt_{database}_{dataset}_{name}_{i}.txt.pdbqt.gz",
         ),
     conda:
-        "../envs/vinalc.yml",
+        "../envs/vinalc.yml"
     envmodules:
         config["VINALC"],
     params:
