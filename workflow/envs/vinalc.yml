@@ -1,0 +1,4 @@
+channels:
+  - bioconda
+dependencies:
+  - vinalc>=1.4.2

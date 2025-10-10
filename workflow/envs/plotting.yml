@@ -1,0 +1,5 @@
+channels:
+  - conda-forge
+dependencies:
+  - matplotlib>=3.10.6
+  - venn>=0.1.3
