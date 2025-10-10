@@ -33,11 +33,7 @@ rule convertMol2:
     output:
         path.join(TMP_DIR, "unzipped", "ZINC", "subsets", "{subset}.pdbqt"),
     conda:
-<<<<<<< HEAD
         "../envs/openbabel.yml"
-=======
-        "../envs/openbabel.yml",
->>>>>>> main
     envmodules:
         config["OPENBABEL"],
     shell:
@@ -50,7 +46,7 @@ rule mergeLocalInput:
     output:
         path.join(TMP_DIR, "unzipped", "{database}", "{dataset}", "local.pdbqt"),
     conda:
-        "../envs/openbabel.yml",
+        "../envs/openbabel.yml"
     envmodules:
         config["OPENBABEL"],
     script:
@@ -73,11 +69,7 @@ rule SDFToPDBQT:
     output:
         path.join(TMP_DIR, "unzipped", "{database}", "{dataset}", "{name}.pdbqt"),
     conda:
-<<<<<<< HEAD
         "../envs/openbabel.yml"
-=======
-        "../envs/openbabel.yml",
->>>>>>> main
     envmodules:
         config["OPENBABEL"],
     shell:
@@ -90,11 +82,7 @@ rule prepareReceptor:
     output:
         path.join(TMP_DIR, "PDB", "receptor", "{name}.pdb"),
     conda:
-<<<<<<< HEAD
         "../envs/biopython.yml"
-=======
-        "../envs/biopython.yml",
->>>>>>> main
     envmodules:
         config["BIOPYTHON"],
     script:
@@ -107,11 +95,7 @@ rule makeReceptorPDBQT:
     output:
         path.join(PREPARED_DIR, "receptor", "{name}.pdbqt"),
     conda:
-<<<<<<< HEAD
         "../envs/openbabel.yml"
-=======
-        "../envs/openbabel.yml",
->>>>>>> main
     envmodules:
         config["OPENBABEL"],
     shell:
@@ -124,7 +108,7 @@ rule gunzip:
     output:
         path.join(TMP_DIR, "unzipped", "{database}", "{dataset}", "{name}.{filetype}"),
     conda:
-        "../basic.yml",
+        "../envs/basic.yml"
     shell:
         "gunzip < {input} > {output} || touch {output}"
 
@@ -167,11 +151,7 @@ rule energyMin:
         runtime=config["ENERGY_MIN"]["runtime"],
         mem_mb=config["ENERGY_MIN"]["mem_mb"],
     conda:
-<<<<<<< HEAD
         "../envs/openbabel.yml"
-=======
-        "../envs/openbabel.yml",
->>>>>>> main
     envmodules:
         config["OPENBABEL"],
     shell:
@@ -183,8 +163,24 @@ rule prepareGeometry:
         path.join(config["GRID_DIR"], "{receptorID}.gpf"),
     output:
         path.join(OUTPUT_DIR, "grid", "{receptorID}_grid.txt"),
-    shell:
-        "egrep 'npts|gridcenter' {input} |cut -f2-4 -d' '| tac |tr '\n' ' ' > {output} && sed -i -e '$a\ ' {output}"
+    run:
+        grid_params = []
+
+        with open(input[0], "r") as f:
+            for line in f:
+                # Match lines starting with 'npts' or 'gridcenter'
+                if line.startswith(("npts", "gridcenter")):
+                    # Extract fields 2-4 (space-separated values after the first field)
+                    parts = line.strip().split()
+                    if len(parts) >= 4:
+                        grid_params.append(" ".join(parts[1:4]))
+
+                # Reverse the order (equivalent to 'tac')
+        grid_params.reverse()
+
+        # Write to output file with space separation and trailing newline
+        with open(output[0], "w") as f:
+            f.write(" ".join(grid_params) + " \n")
 
 
 rule prepareLibrary:
@@ -203,5 +199,5 @@ rule prepareDocking:
         path.join(OUTPUT_DIR, "receptor", "{receptorID}.txt"),
     run:
         import shutil
-        shutil.copy(input[0], output[0])
 
+        shutil.copy(input[0], output[0])
