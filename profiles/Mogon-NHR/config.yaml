@@ -7,7 +7,7 @@ default-resources:
 set-resources:
     docking:
       mem_mb_per_cpu: 3000
-      partition: parallel
+      slurm_partition: parallel
       ntasks: 512
     energyMin:
       mem_mb: 350
