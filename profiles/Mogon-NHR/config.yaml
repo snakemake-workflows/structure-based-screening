@@ -1,0 +1,18 @@
+default-resources:
+    slurm_partition: smallcpu
+    mem_mb_per_cpu: 1800
+    runtime: "30m"
+    clusters: "mogonnhr"
+
+set-resources:
+    docking:
+      mem_mb_per_cpu: 3000
+      slurm_partition: parallel
+      ntasks: 512
+    energyMin:
+      mem_mb: 350
+      runtime: 90
+    results:
+      mem_mb: 65000
+      runtime: 300
+
