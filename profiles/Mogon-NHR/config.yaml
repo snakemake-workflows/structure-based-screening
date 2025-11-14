@@ -1,5 +1,7 @@
 default-resources:
-    slurm_partition: smallcpu
+    executor: "slurm"
+    slurm_account: "nhr-zdvhpc"
+    slurm_partition: "smallcpu"
     mem_mb_per_cpu: 1800
     runtime: "30m"
     clusters: "mogonnhr"
@@ -7,8 +9,9 @@ default-resources:
 set-resources:
     docking:
       mem_mb_per_cpu: 3000
-      slurm_partition: parallel
-      ntasks: 512
+      slurm_partition: "parallel"
+      tasks: 512
+      runtime: 500
     energyMin:
       mem_mb: 350
       runtime: 90
