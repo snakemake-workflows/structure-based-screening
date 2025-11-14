@@ -3,14 +3,66 @@ import re
 import os
 import requests
 from snakemake.logging import logger
+import builtins
+import importlib
+from urllib.parse import urlparse
 
+# all rules in this file are local rules
+localrules: dockingResults, dockingResultsTxt, bestLigands, makeHistogram, mergeDocking
 
 def url_reachable(url):
     """
     test for reachable URL
     """
-    r = requests.head(url)
-    return r.status_code == 200
+    try:
+        r = requests.head(url, allow_redirects=True, timeout=5)
+        # Accept common codes: 200 OK, 301/302 redirects, 403 Forbidden (some servers block HEAD)
+        return r.status_code in (200, 301, 302, 403)
+    except Exception:
+        return False
+
+
+def check_zinc_url(url):
+    """Robust check for ZINC availability.
+
+    Behaviour:
+    - If config contains `ZINC_IGNORE_CHECK` and it's truthy, return True.
+    - If a user override function `zinc_available(url)` exists in
+      `workflow.scripts.user_checks` or `user_checks`, call it and use its result.
+    - Otherwise try http and https variants, allow redirects and accept 200/301/302/403.
+    """
+    # allow config to skip checks (useful for clusters/non-interactive runs)
+    try:
+        if config.get("ZINC_IGNORE_CHECK"):
+            return True
+    except Exception:
+        pass
+
+    # user override hook: look for zinc_available(url) in user_checks
+    for modname in ("workflow.scripts.user_checks", "user_checks"):
+        try:
+            mod = importlib.import_module(modname)
+            if hasattr(mod, "zinc_available"):
+                try:
+                    return bool(mod.zinc_available(url))
+                except Exception:
+                    # if the user function errors, fall back to default checks
+                    logger.warning(f"user zinc_available in {modname} raised an exception; falling back to default checks")
+        except Exception:
+            continue
+
+    # Try provided url, and fallback to https/http variants
+    variants = [url]
+    parsed = urlparse(url)
+    if parsed.scheme == "http":
+        variants.insert(0, url.replace("http://", "https://", 1))
+    elif parsed.scheme == "https":
+        variants.insert(0, url.replace("https://", "http://", 1))
+
+    for u in variants:
+        if url_reachable(u):
+            return True
+    return False
 
 
 def getTranches():
@@ -24,17 +76,24 @@ def getTranches():
         return list(set(matches))
 
 
-def library(wildcards):
+def library_files(wildcards):
     if DATABASE[0] == "ZINC":  # ZINC database selected
 
         if SUBSET == "TRANCHES":  # Tranches selected
             out = []
-            # test for ZINC reachability:
-            if not url_reachable("http://files.docking.org/3D/"):
+            # Use ZINC_MIRROR from config if available
+            zinc_mirror = config.get("ZINC_MIRROR", "files.docking.org")
+            if not zinc_mirror.startswith("http://") and not zinc_mirror.startswith("https://"):
+                zinc_mirror = "http://" + zinc_mirror
+            zinc_mirror = zinc_mirror.rstrip("/")
+            zinc_test_url = f"{zinc_mirror}/3D/"
+            
+            # test for ZINC reachability (robust):
+            if not check_zinc_url(zinc_test_url):
                 logger.info(
-                    "The ZINC database is not accessible right now. Perhaps it is temporarily down?"
+                    f"The ZINC database mirror ({zinc_mirror}) is not accessible right now. Perhaps it is temporarily down?"
                 )
-                user_input = input(
+                user_input = __import__("builtins").input(
                     "Have you already run this workflow in the current folder with the same input data?(y/n) \n"
                 )
                 if user_input == "y":
@@ -49,8 +108,9 @@ def library(wildcards):
                     database = config["DATABASE"]
 
                     for i in tranch_list:
-                        wl = i[0:2]
-                        entry = f"{OUTPUT_DIR}/output/{receptorID}/{receptorID}_{database}_{wl}_{i}.pdbqt.gz"
+                        wl = i[0:2]  # first 2 chars are weight+logP = dataset
+                        full_name = i  # all 6 chars = name
+                        entry = f"docking/{receptorID}/{receptorID}_{database}_{wl}_{full_name}.pdbqt.gz"
                         out.append(entry)
                     if not out:
                         logger.error("No tranche parameter found in last log file.")
@@ -59,45 +119,37 @@ def library(wildcards):
                         return out
                 else:
                     logger.error(
-                        "Aborting the snakemake run for now, as the data from the ZINC database (http://files.docking.org) are temporarily not available. Please try at a later time."
+                        f"Aborting the snakemake run for now, as the data from the ZINC database ({zinc_mirror}) are temporarily not available. Please try at a later time."
                     )
                     sys.exit(1)
             rawOut = expand(
-                path.join(
-                    OUTPUT_DIR,
-                    "output",
+                path.join(                    
+                    "docking",
                     "{receptorID}",
-                    "{receptorID}_{database}_{w}{l}_{w}{l}{r}{p}{ph}{c}.pdbqt.gz",
+                    "{receptorID}_{database}_{dataset}_{name}.pdbqt.gz",
                 ),
                 receptorID=config["TARGETS"][0].split(",")[0],
                 database=config["DATABASE"],
-                w=config["ZINC_INPUT"]["WEIGHT"],
-                l=config["ZINC_INPUT"]["LOGP"],
-                r=config["ZINC_INPUT"]["REACT"],
-                p=config["ZINC_INPUT"]["PURCHASE"],
-                ph=config["ZINC_INPUT"]["PH"],
-                c=config["ZINC_INPUT"]["CHARGE"],
-                dataset=(config["ZINC_INPUT"]["WEIGHT"])
-                + (config["ZINC_INPUT"]["LOGP"]),
+                dataset=[w+l for w in config["ZINC_INPUT"]["WEIGHT"] for l in config["ZINC_INPUT"]["LOGP"]],
+                name=[w+l+r+p+ph+c for w in config["ZINC_INPUT"]["WEIGHT"] 
+                      for l in config["ZINC_INPUT"]["LOGP"]
+                      for r in config["ZINC_INPUT"]["REACT"]
+                      for p in config["ZINC_INPUT"]["PURCHASE"]
+                      for ph in config["ZINC_INPUT"]["PH"]
+                      for c in config["ZINC_INPUT"]["CHARGE"]],
             )
             for i in rawOut:
                 weighLog = i.split("_")[-2]
                 restAttr = (i.split("_")[-1])[2:6]
-                url = "".join(
-                    [
-                        "http://files.docking.org/3D/",
-                        weighLog,
-                        "/",
-                        restAttr,
-                        "/",
-                        weighLog,
-                        restAttr,
-                        ".xaa.pdbqt.gz",
-                    ]
-                )
-                r = requests.get(url)
-                if r.status_code == 200:
-                    out.append(i)
+                url = f"{zinc_mirror}/3D/{weighLog}/{restAttr}/{weighLog}{restAttr}.xaa.pdbqt.gz"
+                try:
+                    r = requests.get(url, allow_redirects=True, timeout=10)
+                    # Accept common positive/redirect/forbidden codes and treat them as present
+                    if r.status_code in (200, 301, 302, 403):
+                        out.append(i)
+                except Exception:
+                    # treat as not present and continue
+                    continue
             if not out:
                 logger.error(
                     "All selected tranches are empty; select other parameters!"
@@ -109,8 +161,7 @@ def library(wildcards):
 
             out = expand(
                 path.join(
-                    OUTPUT_DIR,
-                    "output",
+                    "docking",
                     "{receptorID}",
                     "{receptorID}_{database}_subsets_{subset}.pdbqt.gz",
                 ),
@@ -124,17 +175,37 @@ def library(wildcards):
                 + SUBSET
                 + ".mol2?count=all"
             )
-            r = requests.get(url)
-            if r.status_code == 200:  # test if subset is valid
-                return out
+            try:
+                r = requests.get(url, allow_redirects=True, timeout=10)
+                if r.status_code == 200:  # test if subset is valid
+                    return out
+            except Exception as e:
+                logger.warning(f"Could not connect to ZINC to validate subset: {e}")
 
-            r_zinc = requests.get("https://zinc15.docking.org/")
-            if r_zinc.status_code != 200:  # test if ZINC database is available
+            try:
+                r_zinc = requests.get("https://zinc15.docking.org/", allow_redirects=True, timeout=10)
+                if r_zinc.status_code != 200:  # test if ZINC database is available
+                    logger.info(
+                        "The ZINC database is not accessible right now. Perhaps it is temporarily down?"
+                    )
+                    # if ZINC not available, but dataset is already downloaded --> continue
+                    subset_dir = path.join(INPUT_DIR, config["SUBSET"] + ".mol2")
+                    if os.path.isfile(subset_dir):
+                        return out
+                    else:
+                        logger.error(
+                            "Subset is not availiable in the specified data folder. \n Abort snakemake run, try again later"
+                        )
+                        sys.exit(1)
+                else:
+                    logger.error("Invalid subset name!")
+                    sys.exit(1)
+            except Exception as e:
                 logger.info(
-                    "The ZINC database is not accessible right now. Perhaps it is temporarily down?"
+                    f"The ZINC database is not accessible right now (error: {e}). Perhaps it is temporarily down?"
                 )
                 # if ZINC not available, but dataset is already downloaded --> continue
-                subset_dir = path.join(INPUT_DIR, config["SUBSET"] + ".mol2")
+                subset_dir = path.join(DATABASE, config["SUBSET"] + ".mol2")
                 if os.path.isfile(subset_dir):
                     return out
                 else:
@@ -143,15 +214,10 @@ def library(wildcards):
                     )
                     sys.exit(1)
 
-            else:
-                logger.error("Invalid subset name!")
-                sys.exit(1)
-
     else:  # not ZINC database --> local input data
         best = expand(
             path.join(
-                OUTPUT_DIR,
-                "output",
+                "docking",
                 "{receptorID}",
                 "{receptorID}_{database}_{dataset}_local.pdbqt.gz",
             ),
@@ -164,10 +230,10 @@ def library(wildcards):
 
 rule makeHistogram:
     input:
-        path.join(OUTPUT_DIR, "results", "{receptorID}.pdbqt.gz"),
+        path.join("results", "{receptorID}.pdbqt.gz"),
     output:
         report(
-            path.join(OUTPUT_DIR, "results", "{receptorID}_hist.png"),
+            path.join("results", "{receptorID}_hist.png"),
             category="Histogram",
         ),
     log:
@@ -182,9 +248,9 @@ rule makeHistogram:
 
 rule bestLigands:
     input:
-        library,
+        library_files,
     output:
-        path.join(OUTPUT_DIR, "results", "{receptorID}.pdbqt.gz"),
+        path.join("results", "{receptorID}.pdbqt.gz"),
     log:
         "logs/bestLigands_{receptorID}.log",
     script:
@@ -193,27 +259,23 @@ rule bestLigands:
 
 rule dockingResults:
     input:
-        path.join(OUTPUT_DIR, "results", "{receptorID}.pdbqt.gz"),
+        path.join("results", "{receptorID}.pdbqt.gz"),
     output:
-        path.join(OUTPUT_DIR, "results", "{receptorID}_{percentage}.pdbqt"),
+        path.join("results", "{receptorID}_{percentage}.pdbqt"),
     envmodules:
         config["PYTHON"],
     log:
         "logs/dockingResults_{receptorID}_{percentage}.log",
-    threads: config["DOCKING_RESULTS"]["threads"]
-    resources:
-        mem_mb=config["DOCKING_RESULTS"]["mem_mb"],
-        runtime=config["DOCKING_RESULTS"]["runtime"],
-        partition=config["DOCKING_RESULTS"]["partition"],
+    threads: 1
     script:
         "../scripts/sortResult.py"
 
 
 rule dockingResultsTxt:
     input:
-        path.join(OUTPUT_DIR, "results", "{receptorID}_{percentage}.pdbqt"),
+        path.join("results", "{receptorID}_{percentage}.pdbqt"),
     output:
-        path.join(OUTPUT_DIR, "results", "{receptorID}_{percentage}.csv"),
+        path.join("results", "{receptorID}_{percentage}.csv"),
     log:
         "logs/dockingResultsTxt_{receptorID}_{percentage}.log",
     conda:
@@ -227,10 +289,10 @@ rule dockingResultsTxt:
 
 rule removeDuplicateLigands:
     input:
-        path.join(OUTPUT_DIR, "results", "{receptorID}_{percentage}.pdbqt"),
+        path.join("results", "{receptorID}_{percentage}.pdbqt"),
     output:
         path.join(
-            OUTPUT_DIR, "rescreening", "unique", "{receptorID}_{percentage}.pdbqt"
+            "rescreening", "unique", "{receptorID}_{percentage}.pdbqt"
         ),
     log:
         "logs/removeDuplicateLigands_{receptorID}_{percentage}.log",
@@ -241,12 +303,12 @@ rule removeDuplicateLigands:
 checkpoint split2:
     input:
         path.join(
-            OUTPUT_DIR, "rescreening", "unique", "{receptorID}_{percentage}.pdbqt"
+            "rescreening", "unique", "{receptorID}_{percentage}.pdbqt"
         ),
     output:
-        directory(
-            os.path.join(TMP_DIR, "rescreening_ligands_{percentage}", "{receptorID}")
-        ),
+        temp(directory(
+            os.path.join("scratch", "rescreening_ligands_{percentage}", "{receptorID}")
+        )),
     log:
         "logs/split2_{receptorID}_{percentage}.log",
     script:
@@ -256,11 +318,11 @@ checkpoint split2:
 rule prepareLigands2:
     input:
         ligands=path.join(
-            TMP_DIR, "rescreening_ligands_{percentage}", "{receptorID}", "{i}.pdbqt"
+            "scratch", "rescreening_ligands_{percentage}", "{receptorID}", "{i}.pdbqt"
         ),
     output:
         ligands=path.join(
-            OUTPUT_DIR, "rescreening_{percentage}", "{name}_{receptorID}", "{i}.txt"
+            "rescreening_{percentage}", "{name}_{receptorID}", "{i}.txt"
         ),
     log:
         "logs/prepareLigands2_{receptorID}_{percentage}_{name}_{i}.log",
@@ -270,14 +332,14 @@ rule prepareLigands2:
 
 rule prepareSecondDocking:
     input:
-        grid=path.join(OUTPUT_DIR, "grid", "{name}_grid.txt"),
-        receptor=path.join(PREPARED_DIR, "receptor", "{name}.pdbqt"),
+        grid=path.join("grid", "{name}_grid.txt"),
+        receptor=path.join("prepared", "receptor", "{name}.pdbqt"),
     output:
         grid=path.join(
-            OUTPUT_DIR, "rescreening_{percentage}", "{name}_{receptorID}", "{name}.grd"
+            "rescreening_{percentage}", "{name}_{receptorID}", "{name}.grd"
         ),
         receptor=path.join(
-            OUTPUT_DIR, "rescreening_{percentage}", "{name}_{receptorID}", "{name}.rec"
+           "rescreening_{percentage}", "{name}_{receptorID}", "{name}.rec"
         ),
     log:
         "logs/prepareSecondDocking_{name}_{receptorID}_{percentage}.log",
@@ -291,17 +353,16 @@ rule prepareSecondDocking:
 rule docking2:
     input:
         ligands=path.join(
-            OUTPUT_DIR, "rescreening_{percentage}", "{name}_{receptorID}", "{i}.txt"
+            "rescreening_{percentage}", "{name}_{receptorID}", "{i}.txt"
         ),
         grid=path.join(
-            OUTPUT_DIR, "rescreening_{percentage}", "{name}_{receptorID}", "{name}.grd"
+            "rescreening_{percentage}", "{name}_{receptorID}", "{name}.grd"
         ),
         receptor=path.join(
-            OUTPUT_DIR, "rescreening_{percentage}", "{name}_{receptorID}", "{name}.rec"
+            "rescreening_{percentage}", "{name}_{receptorID}", "{name}.rec"
         ),
     output:
         path.join(
-            OUTPUT_DIR,
             "rescreening_{percentage}",
             "{name}_{receptorID}",
             "{name}.rec_{i}.txt.pdbqt.gz",
@@ -309,15 +370,9 @@ rule docking2:
     log:
         "logs/docking2_{name}_{receptorID}_{percentage}_{i}.log",
     params:
-        dir=path.join(OUTPUT_DIR, "rescreening_{percentage}"),
+        dir=path.join("rescreening_{percentage}"),
         gridfile=path.join(config["GRID_DIR"], "{name}.gpf"),
         cutOff=config["CUTOFF_VALUE"],
-    resources:
-        mpi=True,
-        partition=config["DOCKING"]["partition"],
-        tasks=config["DOCKING"]["ntasks"],
-        slurm_extra=config["DOCKING"]["slurm_extra"],
-        runtime=config["DOCKING"]["runtime"],
     conda:
         "../envs/vinalc.yml"
     envmodules:
@@ -336,7 +391,7 @@ def aggregate_in2(wildcards):
     checkpoint_output = checkpoints.split2.get(**wildcards).output[0]
     files_names = expand(
         path.join(
-            OUTPUT_DIR,
+            "rescreening",
             "rescreening_{{percentage}}",
             "{{name}}_{{receptorID}}",
             "{{name}}.rec_{i}.txt.pdbqt.gz",
@@ -351,8 +406,7 @@ rule mergeDocking2:
         unpack(aggregate_in2),
     output:
         path.join(
-            OUTPUT_DIR,
-            "output",
+            "rescreening",
             "rescreening_{percentage}",
             "{name}_{receptorID}",
             "{name}.pdbqt.gz",
@@ -368,16 +422,14 @@ rule mergeDocking2:
 rule dockingResults2:
     input:
         path.join(
-            OUTPUT_DIR,
-            "output",
+            "rescreening",
             "rescreening_{percentage}",
             "{name}_{receptorID}",
             "{name}.pdbqt.gz",
         ),
     output:
         path.join(
-            OUTPUT_DIR,
-            "output",
+            "resreening",
             "rescreening_{percentage}",
             "{name}_{receptorID}",
             "{name}_best.pdbqt",
@@ -392,11 +444,10 @@ rule dockingResults2:
 
 rule makeVenn:
     input:
-        best=path.join(OUTPUT_DIR, "results", "{receptorID}_{percentage}.pdbqt"),
+        best=path.join("results", "{receptorID}_{percentage}.pdbqt"),
         re_results=expand(
             path.join(
-                OUTPUT_DIR,
-                "output",
+                "rescreening",
                 "rescreening_{percentage}",
                 "{name}_{receptorID}",
                 "{name}_best.pdbqt",
@@ -408,7 +459,6 @@ rule makeVenn:
     output:
         report(
             path.join(
-                OUTPUT_DIR,
                 "results",
                 "rescreening_{percentage}",
                 "{receptorID}",
@@ -418,7 +468,7 @@ rule makeVenn:
         ),
         report(
             path.join(
-                OUTPUT_DIR,
+                "rescreening",
                 "results",
                 "rescreening_{percentage}",
                 "{receptorID}",
