@@ -5,31 +5,18 @@ from snakemake.utils import min_version
 
 min_version("7.19.1")  # this is where SLURM support was introduced
 
-INPUT_DIR = config["INPUT_DIR"]
-
-MIN_DIR = config["PREPARED_LIGAND_DIR"]
-
-PREPARED_DIR = config["PREPARED_DATA_DIR"]
-
-OUTPUT_DIR = config["OUTPUT_DIR"]
-
-TMP_DIR = config["TEMP_DATA_DIR"]
 
 LOCAL_INPUT = config["LOCAL_INPUT_DIR"]
-
 DATABASE = config["DATABASE"]
-
 SUBSET = config["SUBSET"]
-
 RESCREENING_TARGETS = config["RESCREENING_TARGETS"]
 
 
 def generateOutput(wildcards):
-    irods = path.join(OUTPUT_DIR, "results", "irods.json")
+    irods = path.join("results", "irods.json")
     if config["RESCREENING"] == "TRUE":
         out = expand(
             path.join(
-                OUTPUT_DIR,
                 "results",
                 "rescreening_{percentage}",
                 "{receptorID}",
@@ -40,53 +27,21 @@ def generateOutput(wildcards):
             combAll=combAll,
         )
         hist = expand(
-            path.join(OUTPUT_DIR, "results", "{receptorID}_hist.png"),
+            path.join("results", "{receptorID}_hist.png"),
             receptorID=config["TARGETS"][0].split(",")[0],
         )
-
         return hist + out + [irods]
-
     else:
         out = expand(
-            path.join(OUTPUT_DIR, "results", "{receptorID}_{percentage}.csv"),
+            path.join("results", "{receptorID}_{percentage}.csv"),
             receptorID=config["TARGETS"][0].split(",")[0],
             percentage=config["RESULT_NUMBER"],
         )
         hist = expand(
-            path.join(OUTPUT_DIR, "results", "{receptorID}_hist.png"),
+            path.join("results", "{receptorID}_hist.png"),
             receptorID=config["TARGETS"][0].split(",")[0],
         )
         return hist + out + [irods]
-
-
-localrules:
-    all,
-    generateIRODS,
-    dockingResultsTxt,
-    removeDuplicateLigands,
-    makeVenn,
-    prepareLigands2,
-    mergeDocking2,
-    bestLigands,
-    prepareSecondDocking,
-    convertMol2,
-    makeReceptorPDBQT,
-    mergeDocking,
-    mergeLocalInput,
-    split,
-    split2,
-    targetProtein,
-    getZINCdata,
-    getZINCSubsets,
-    gunzip,
-    ENAMINEdownload,
-    prepareReceptor,
-    prepareDocking,
-    prepareLibrary,
-    prepareGeometry,
-    makeHistogram,
-    cleanLigands,
-
 
 targetList = []  # get ProteinIDs from configfile for rescreening
 for i in config["RESCREENING_TARGETS"]:
@@ -102,7 +57,6 @@ combAll = "_".join(targetList)  # combine all rescreening targets
 
 def getAllVenn(wildcards):
     path.join(
-        OUTPUT_DIR,
         "output",
         "rescreening",
         "{receptorID}",
@@ -114,7 +68,6 @@ def IRODSinput(wildcards):
     if config["RESCREENING"] == "TRUE":
         out = expand(
             path.join(
-                OUTPUT_DIR,
                 "results",
                 "rescreening_{percentage}",
                 "{receptorID}",
@@ -126,7 +79,7 @@ def IRODSinput(wildcards):
         )
     else:
         out = expand(
-            path.join(OUTPUT_DIR, "results", "{receptorID}_{percentage}.csv"),
+            path.join("results", "{receptorID}_{percentage}.csv"),
             receptorID=config["TARGETS"][0].split(",")[0],
             percentage=config["RESULT_NUMBER"],
         )
@@ -150,13 +103,14 @@ rule generateIRODS:
     input:
         IRODSinput,
     output:
-        path.join(OUTPUT_DIR, "results", "irods.json"),
+        path.join("results", "irods.json"),
     log:
         "logs/generateIRODS.log",
     script:
         "scripts/generateIRODS.py"
 
 
-include: "rules/analyse.smk"
-include: "rules/docking.smk"
 include: "rules/preparation.smk"
+include: "rules/docking.smk"
+include: "rules/analyse.smk"
+
