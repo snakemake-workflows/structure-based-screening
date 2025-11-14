@@ -1,61 +1,64 @@
-# NOTE: All paths should be fully qualified paths
+#Name your experiment here
+EXPERIMENT_NAME: "test"
+
+# NOTE: All paths are relative to the workflow directory (or --directory if specified)
 
 # Path to raw ligand data | DATABASE/DATASET/file
-INPUT_DIR: "/lustre/project/m2_jgu-smitt/data/raw"
-
 # if you want to manually upload target pdb file upload these to in a subfolder of the input dir called "/PDB/receptor"
 
-
-# Path to output prepared target proteins
-PREPARED_DATA_DIR: "/lustre/project/m2_jgu-smitt/data/prepared"
-
-# Path to energy minimized ligand files
-PREPARED_LIGAND_DIR: "/lustre/project/m2_jgu-smitt/data/minimized"
-
-# Path to scratch directory
-TEMP_DATA_DIR: "/lustre/scratch/m2_jgu-smitt"
-
-# Path where docking results are stored
-OUTPUT_DIR: "/lustre/project/m2_jgu-smitt/<FOLDER>"
-
-# Number of best results to be displayed (0<value<=1: percentage )
+# Percentage of best results to be considered for display and re-screening (0<value<=1: percentage )
+#TODO: change the wording
 RESULT_NUMBER: "10"
 
-# Specify cutoff value for rescreening
+# Specify cutoff value for rescreening (in kcal/mol)
 CUTOFF_VALUE: "-8"
 
 #Specify name for local uploaded data
-#  note: this will be ignored, if a 'DATABASE' (see below) is specified
+#  NOTE: this will be ignored, if a 'DATABASE' (see below) is specified
 LOC_DATA: ["DATASET"]
 
-#Path to folder which contains compounds
-#  Here, a full qualified path should be indicated.
-#  note: this will be ignored, if a 'DATABASE' (see below) is specified
-LOCAL_INPUT_DIR: "<LOCAL_INPUT_DIR>"
+# Path to folder which contains compounds
+#   Here, a full qualified path should be indicated.
+#   NOTE: this will be ignored, if a 'DATABASE' (see above) is specified
+LOCAL_INPUT_DIR: ""
 
-#Specify database to use   ZINC usees and downloads compounds from ZINC database, others read local input from LOCAL_INPUT_DIR
+# Specify "ZINC" to obtain compounds from the ZINC database.
+# Otherwise read local input from the LOCAL_INPUT_DIR, above.
+#TODO: unlist DATABASE
+DATABASE: "ZINC"
 
-DATABASE: ["ZINC"]
+# Specify a ZINC mirror site. Options are:
+#   - files.docking.org
+#   - ftp.uni-mainz.de/mirror/zink20/
+#ZINC_MIRROR: "ftp.uni-mainz.de/mirror/zink20/"
+ZINC_MIRROR: "files.docking.org"
 
-#    First letter is the molecular weight bin - a measure of size - horizontal axis, left to right, online. A: 200 D, B: 250, C:300, D: 325, E:350, F: 375
-#    Second letter is the logP bin - a measure of polarity - vertical axis, top to bottom, online.
-#    The third letter is reactivity : A=anodyne. B=Bother (e.g. chromophores) C=clean (but pains ok), E=mild reactivity ok, G=reactive ok, I = hot chemistry ok
-#    The fourth letter is purchasability: A and B = in stock, C = in stock via agent, D = make on demand, E = boutique (expensive), F=annotated (not for sale)
-#    The fifth letter is pH range: R = ref (7.4), M = mid (near 7.4), L = low (around 6.4), H=high (around 8.4).
-#    The sixth and last dimension is net molecular charge. Here we follow the convention of InChIkeys.
-#        Thus. N = neutral, M = minus 1, L = minus 2 (or greater). O = plus 1, P = plus 2 (or greater).
+# Select the part of the ZINC database for screening. This section follows the ZINC notation and is
+# outlined, here:
+#   - the 1st letter is the molecular weight bin - a measure of size - horizontal axis, 
+#     left to right, as shown on the ZINC webpage. A: 200 D, B: 250, C:300, D: 325, E:350, F: 375
+#   - the 2nd letter is the logP bin - a measure of polarity - vertical axis, top to bottom, 
+#     as shown on the ZINC webpage.
+#   - the 3rd letter defines reactivity : A=anodyne, B=Bother (e.g. chromophores),
+#     C=clean (but pains ok), E=mild reactivity ok, G=reactive ok, I = hot chemistry ok
+#   - the 4th letter notes purchasability: A and B = in stock, C = in stock via agent, 
+#     D = make on demand, E = boutique (expensive), F=annotated (not for sale)
+#   - the 5th letter defines pH range: R = ref (7.4), M = mid (near 7.4), L = low (around 6.4), 
+#     H=high (around 8.4).
+#   - the 6th and last dimension is net molecular charge. Here we follow the convention of InChIkeys.
+#     Thus. N = neutral, M = minus 1, L = minus 2 (or greater). O = plus 1, P = plus 2 (or greater).
 
 ZINC_INPUT:
-  WEIGHT: ["A", "B"] #["C","D","E","F","G"]
-  LOGP:  ["A"] # ,"D","E","F","G", "H","I","J"]
+  WEIGHT: ["B", "C"] #["C","D","E","F","G"]
+  LOGP:  ["B", "C"] # ,"D","E","F","G", "H","I","J"]
   REACT: ["A"] #,"B"] # ,"C", "E", "G"]
-  PURCHASE: ["A"] #, "B"] #, "C", "D", "E"]
-  PH: ["M"]
-  CHARGE: ["N"] # ,"M","O","L","P"]
+  PURCHASE: ["B"] #, "B"] #, "C", "D", "E"]
+  PH: ["M", "R"]
+  CHARGE: ["P"] # ,"M","O","L","P"]
 
-#In case you don't want to download tranches from ZINC based on the paramters given above, a ZINC subset can be choosen. Otherwise set subset as TRANCHES
-# ex.
-SUBSET: "<SUBSET_NAME>"
+# In case you don't want to download tranches from ZINC based on the paramters given above, 
+# a ZINC subset can be choosen. Otherwise set subset as TRANCHES.
+SUBSET: "TRANCHES"
 
 #Specify ENAMINE collection
 ENAMINE_INPUT:
@@ -66,23 +69,21 @@ ENAMINE_INPUT:
 
 ENAMINE_URL: http://www.enamine.net/files/Stock_Screening_Collections/
 
+# Specify whether rescreening is desired ("TRUE" or "FALSE")
+# Rescreening will be performed on the top results as specified by 'RESULT_NUMBER' and 'CUTOFF_VALUE'
+# for the targets specified in 'RESCREENING_TARGETS', below.
 RESCREENING: "FALSE"
 
-# Specify target enzyme ID and chains format: ["PDB_ID, <CHAIN_1> <CHAIN_2]
-TARGETS: ["TARGET,A B C"]
+# Specify target PDB ID and chains in this format: ["PDB_ID, <CHAIN_1> <CHAIN_2], e.g.:
+TARGETS: ["7CWM, A B C"]
 
 # to be specified, if 'RESCREENING' is desired (RESCREENING: "TRUE")
-RESCREENING_TARGETS: ["TARGET1,A B C", "TARGET2,A B C", "TARGET3, A B C"]
-
+RESCREENING_TARGETS: ["6ACD, A B C", "6NB3, A B C", "7BNN, A B C"]
 
 TARGET_URL: https://files.rcsb.org/download
-GRID_DIR: "/<GRID_DIRECTORY>"
+GRID_DIR: "GRID"
 
-#Name your experiment here or change it in the final json file
-
-EXPERIMENT_NAME: "<Name>"
-
-#parameters for energy minimization
+# parameters for energy minimization
 ENERGY_MIN_ALGORITHM: 'cg'
 CONVERGENCE_CRITERIA: '1e-6'
 STEPS: '2500'
