@@ -1,16 +1,40 @@
 ruleorder: convertMol2 > gunzip
 
 
+# most rules in this file are local rules:
+localrules:
+    targetProtein,
+    getZINCdata,
+    getZINCSubsets,
+    convertMol2,
+    mergeLocalInput,
+    ENAMINEdownload,
+    SDFToPDBQT,
+    prepareReceptor,
+    makeReceptorPDBQT,
+    gunzip,
+    cleanLigands,
+    split,
+    prepareGeometry,
+    prepareLibrary,
+    prepareDocking,
+
+
 rule targetProtein:
     output:
-        path.join(INPUT_DIR, "PDB", "receptor", "{receptorID}.pdb.gz"),
+        path.join("PDB", "receptor", "{receptorID}.pdb.gz"),
+    log:
+        "logs/targetProtein/{receptorID}.log",
     shell:
-        "curl -o {output} {config[TARGET_URL]}/{wildcards.receptorID}.pdb.gz"
+        "curl -o {output} {config[TARGET_URL]}/{wildcards.receptorID}.pdb.gz &> {log} 2>&1"
 
 
 rule getZINCdata:
     output:
-        path.join(INPUT_DIR, "ZINC", "{dataset}", "{name}.pdbqt.gz"),
+        temp(path.join(DATABASE, "{dataset}", "{name}.pdbqt.gz")),
+    log: "logs/downloadZINC/{dataset}_{name}.log",
+    message:
+        "Downloading ZINC data for {wildcards.name} from ZINC database {wildcards.dataset}...",
     script:
         "../scripts/ZINCdownload.py"
 
@@ -20,7 +44,7 @@ rule getZINCSubsets:
         sub=config["SUBSET"],
     output:
         expand(
-            path.join(INPUT_DIR, "ZINC", "subsets", "{subset}.mol2"),
+            path.join(DATABASE, "subsets", "{subset}.mol2"),
             subset=config["SUBSET"],
         ),
     script:
@@ -29,9 +53,9 @@ rule getZINCSubsets:
 
 rule convertMol2:
     input:
-        path.join(INPUT_DIR, "ZINC", "subsets", "{subset}.mol2"),
+        path.join("ZINC", "subsets", "{subset}.mol2"),
     output:
-        path.join(TMP_DIR, "unzipped", "ZINC", "subsets", "{subset}.pdbqt"),
+        temp(path.join("scratch", "unzipped", "ZINC", "subsets", "{subset}.pdbqt")),
     conda:
         "../envs/openbabel.yml"
     envmodules:
@@ -44,7 +68,7 @@ rule mergeLocalInput:
     params:
         in_dir=LOCAL_INPUT,
     output:
-        path.join(TMP_DIR, "unzipped", "{database}", "{dataset}", "local.pdbqt"),
+        temp(path.join("scratch", "unzipped", "{database}", "{dataset}", "total.pdbqt")),
     conda:
         "../envs/openbabel.yml"
     envmodules:
@@ -56,7 +80,7 @@ rule mergeLocalInput:
 rule ENAMINEdownload:
     output:
         expand(
-            path.join(INPUT_DIR, "ENAMINE", "{ENAMINE_collection}"),
+            path.join("ENAMINE", "{ENAMINE_collection}"),
             ENAMINE_collection=config["ENAMINE_INPUT"],
         ),
     script:
@@ -65,9 +89,11 @@ rule ENAMINEdownload:
 
 rule SDFToPDBQT:
     input:
-        path.join(TMP_DIR, "unzipped", "{database}", "{dataset}", "{name}.sdf"),
+        path.join("scratch", "unzipped", "{database}", "{dataset}", "{name}.sdf"),
     output:
-        path.join(TMP_DIR, "unzipped", "{database}", "{dataset}", "{name}.pdbqt"),
+        temp(
+            path.join("scratch", "unzipped", "{database}", "{dataset}", "{name}.pdbqt")
+        ),
     conda:
         "../envs/openbabel.yml"
     envmodules:
@@ -78,57 +104,86 @@ rule SDFToPDBQT:
 
 rule prepareReceptor:
     input:
-        path.join(TMP_DIR, "unzipped", "PDB", "receptor", "{name}.pdb"),
+        rules.targetProtein.output,
     output:
-        path.join(TMP_DIR, "PDB", "receptor", "{name}.pdb"),
+        temp(path.join("scratch", "PDB", "receptor", "{receptorID}.pdb")),
     conda:
         "../envs/biopython.yml"
     envmodules:
         config["BIOPYTHON"],
+    log:
+        "logs/prepareReceptor/{receptorID}.log",
     script:
         "../scripts/prepareReceptor.py"
 
 
 rule makeReceptorPDBQT:
     input:
-        path.join(TMP_DIR, "PDB", "receptor", "{name}.pdb"),
+        path.join("scratch", "PDB", "receptor", "{receptorID}.pdb"),
     output:
-        path.join(PREPARED_DIR, "receptor", "{name}.pdbqt"),
+        path.join("prepared", "receptor", "{receptorID}.pdbqt"),
     conda:
         "../envs/openbabel.yml"
     envmodules:
         config["OPENBABEL"],
+    log:
+        "logs/makeReceptorPDBQT/{receptorID}.log",
     shell:
-        "obabel -ipdb {input} -opdbqt -O {output} -xr"
+        "obabel -ipdb {input} -opdbqt -O {output} -xr > {log} 2>&1"
 
 
 rule gunzip:
     input:
-        path.join(INPUT_DIR, "{database}", "{dataset}", "{name}.{filetype}.gz"),
+        path.join("{database}", "{dataset}", "{name}.{filetype}.gz"),
     output:
-        path.join(TMP_DIR, "unzipped", "{database}", "{dataset}", "{name}.{filetype}"),
+        temp(
+            path.join(
+                "scratch", "unzipped", "{database}", "{dataset}", "{name}.{filetype}"
+            )
+        ),
     conda:
         "../envs/basic.yml"
-    shell:
-        "gunzip < {input} > {output} || touch {output}"
+    log:
+        "logs/gunzip/{database}_{dataset}_{name}.log",
+    run:
+        import gzip, shutil, os
+        try:
+            with gzip.open(input[0], "rb") as src, open(output[0], "wb") as dst:
+                shutil.copyfileobj(src, dst)
+        except Exception as e:
+            # log the error if a log file is defined, then create an empty output (touch)
+            try:
+                with open(log[0], "a") as lf:
+                    lf.write(str(e) + "\n")
+            except Exception:
+                pass
+            open(output[0], "wb").close()
 
 
 rule cleanLigands:
     input:
-        path.join(TMP_DIR, "unzipped", "{database}", "{dataset}", "{name}.pdbqt"),
+        path.join("scratch", "unzipped", "{database}", "{dataset}", "{name}.pdbqt"),
     output:
-        path.join(TMP_DIR, "cleaned", "{database}", "{dataset}", "{name}.pdbqt"),
+        temp(path.join("scratch", "cleaned", "{database}", "{dataset}", "{name}.pdbqt")),
+    log:
+        "logs/cleanLigands/{database}_{dataset}_{name}.log",
     shell:
         "awk '/MODEL/ {{s=1}} s {{a[++c]=$0}} /Si/ {{p=1}} /ENDMDL/ {{if (!p) for (i=1;i<=c;i++) print a[i]; delete a;s=p=c=0;next}} !s' {input} > {output}"
 
 
 checkpoint split:
     input:
-        path.join(TMP_DIR, "cleaned", "{database}", "{dataset}", "{name}.pdbqt"),
+        path.join("scratch", "cleaned", "{database}", "{dataset}", "{name}.pdbqt"),
     output:
-        directory(
-            os.path.join(TMP_DIR, "prepared", "{database}", "{dataset}", "{name}_dir")
+        temp(
+            directory(
+                os.path.join(
+                    "scratch", "prepared", "{database}", "{dataset}", "{name}_dir"
+                )
+            )
         ),
+    log:
+        "logs/split/{database}_{dataset}_{name}.log",
     script:
         "../scripts/splitFile.py"
 
@@ -136,33 +191,33 @@ checkpoint split:
 rule energyMin:
     input:
         path.join(
-            TMP_DIR, "prepared", "{database}", "{dataset}", "{name}_dir", "{i}.pdbqt"
+            "scratch", "prepared", "{database}", "{dataset}", "{name}_dir", "{i}.pdbqt"
         ),
     output:
-        path.join(MIN_DIR, "{database}", "{dataset}", "{name}", "{i}.pdbqt"),
+        path.join("minimized", "{database}", "{dataset}", "{name}", "{i}.pdbqt"),
     params:
         algorithm=config["ENERGY_MIN_ALGORITHM"],
         steps=config["STEPS"],
         forcefield=config["FORCEFIELD"],
         convergence=config["CONVERGENCE_CRITERIA"],
-    threads: config["ENERGY_MIN"]["threads"]
-    resources:
-        partition=config["ENERGY_MIN"]["partition"],
-        runtime=config["ENERGY_MIN"]["runtime"],
-        mem_mb=config["ENERGY_MIN"]["mem_mb"],
+    threads: 8
+    log:
+        "logs/energyMin/{database}_{dataset}_{name}_{i}.log",
     conda:
         "../envs/openbabel.yml"
     envmodules:
         config["OPENBABEL"],
     shell:
-        "obabel -ipdbqt {input} -opdbqt -O {output} --minimize --{params.algorithm} --steps {params.steps} --ff {params.forcefield} --crit {params.convergence}"
+        "obabel -ipdbqt {input} -opdbqt -O {output} --minimize --{params.algorithm} --steps {params.steps} --ff {params.forcefield} --crit {params.convergence} > {log} 2>&1"
 
 
 rule prepareGeometry:
     input:
         path.join(config["GRID_DIR"], "{receptorID}.gpf"),
     output:
-        path.join(OUTPUT_DIR, "grid", "{receptorID}_grid.txt"),
+        path.join("grid", "{receptorID}_grid.txt"),
+    log:
+        "logs/prepareGeometry/{receptorID}.log",
     run:
         grid_params = []
 
@@ -185,17 +240,21 @@ rule prepareGeometry:
 
 rule prepareLibrary:
     input:
-        path.join(MIN_DIR, "{database}", "{dataset}", "{name}", "{i}.pdbqt"),
+        path.join("minimized", "{database}", "{dataset}", "{receptorID}", "{i}.pdbqt"),
     output:
-        library=path.join(OUTPUT_DIR, "library", "{database}_{dataset}_{name}_{i}.txt"),
+        library=path.join("library", "{database}_{dataset}_{receptorID}_{i}.txt"),
+    log:
+        "logs/prepareLibrary/{database}_{dataset}_{receptorID}_{i}.log",
     shell:
         "echo {input} > {output}"
 
 
 rule prepareDocking:
     input:
-        path.join(PREPARED_DIR, "receptor", "{receptorID}.pdbqt"),
+        rules.makeReceptorPDBQT.output,
     output:
-        path.join(OUTPUT_DIR, "receptor", "{receptorID}.txt"),
+        path.join("receptor", "{receptorID}.txt"),
+    log:
+        "logs/prepareDocking/{receptorID}.log",
     shell:
         "echo {input} > {output}"
