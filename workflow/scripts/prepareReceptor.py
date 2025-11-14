@@ -1,8 +1,12 @@
 """preparation of proteins specified in configfile"""
 
 import os
+import tempfile
 from Bio.PDB import PDBParser, PDBIO
 
+# Redirect all stdout/stderr to the log file
+sys.stdout = open(snakemake.log[0], 'w', buffering=1)  # line buffering
+sys.stderr = sys.stdout
 
 def removeChains(model, chainlist):
     """
@@ -39,18 +43,31 @@ def prepareRec(inputfile, outputfile, target):
     """
     select chains to delete depending on config definition
     """
-    print(target)
+    print(f"Preparing target: {target}")
+    # target might be a gzipped file
+    if inputfile.endswith(".gz"):
+        import gzip
+        import shutil
+        # the unzipped file needs to be temporary
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            print(f"  Unzipping {inputfile} to temporary file.")
+            ungzipped = f.name
+            with gzip.open(inputfile, "rb") as f_in:
+                with open(ungzipped, "wb") as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+        inputfile = ungzipped
     ID = target.split(",")
     chains = ID[1].split(" ")
     parser = PDBParser()  # MMCIFParser()
     structure = parser.get_structure(ID[0], inputfile)
     model = structure[0]
+    print(f"  Removing chains not in: {chains}")
     removeChains(model, chains)
 
     io = PDBIO()
     io.set_structure(structure)
     out = outputfile
-    print("printing outfile")
+    print(f"  Printing outfile: {out}")
     io.save(out)
 
 

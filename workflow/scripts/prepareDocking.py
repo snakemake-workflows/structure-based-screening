@@ -6,7 +6,7 @@ preparation of ligand input file for VinaLC containing the path
 import os
 
 input_directory = snakemake.input.in_dir
-output_directory = snakemake.config["OUTPUT_DIR"]
+output_directory = snakemake.output.
 
 if "ZINC" in snakemake.config["DATABASE"]:
     weightLog = input_directory[-2:]
