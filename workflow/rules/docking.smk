@@ -1,6 +1,10 @@
-localrules: prepare_docking_local, prepare_docking_ligand
+localrules:
+    prepare_docking_local,
+    prepare_docking_ligand,
+
 
 from snakemake.exceptions import WorkflowError
+
 
 def get_spacing(gridfile):
     """Return spacing as float parsed from a .gpf grid file.
@@ -35,22 +39,18 @@ rule prepare_docking_local:
         receptor=rules.makeReceptorPDBQT.output,
         geometry=path.join("grid", "{receptorID}_grid.txt"),
     output:
-        temp(path.join(
-            "docking", "{receptorID}", "{dataset}", "{receptorID}.txt"
-        )),
-        temp(path.join(
-            "docking", "{receptorID}", "{dataset}", "{receptorID}_grid.txt"
-        )),
+        temp(path.join("docking", "{receptorID}", "{dataset}", "{receptorID}.txt")),
+        temp(path.join("docking", "{receptorID}", "{dataset}", "{receptorID}_grid.txt")),
     message:
         (
             f"  Copying receptor from {str(input.receptor)} to {str(output[0])}; "
             f"Copying geometry from {str(input.geometry)} to {str(output[1])}"
-        ),
+        )
     run:
         import shutil
+
         shutil.copy(str(input.receptor), str(output[0]))
         shutil.copy(str(input.geometry), str(output[1]))
-
 
 
 rule prepare_docking_ligand:
@@ -63,11 +63,13 @@ rule prepare_docking_ligand:
     input:
         ligands=path.join("library", "{database}_{dataset}_{name}_{i}.txt"),
     output:
-        temp(path.join(
-            "docking",
-            "{receptorID}",
-            "{dataset}",
-            "{database}_{dataset}_{name}_{i}.txt",
+        temp(
+            path.join(
+                "docking",
+                "{receptorID}",
+                "{dataset}",
+                "{database}_{dataset}_{name}_{i}.txt",
+            )
         ),
     params:
         directory=path.join("docking"),
@@ -105,18 +107,20 @@ rule docking:
         config["VINALC"],
     params:
         # get spacing from the receptor's .gpf at runtime using wildcards
-        space=lambda wildcards: get_spacing(os.path.join(config['GRID_DIR'], f'{wildcards.receptorID}.gpf')),
+        space=lambda wildcards: get_spacing(
+            os.path.join(config["GRID_DIR"], f"{wildcards.receptorID}.gpf")
+        ),
     log:
         "logs/docking/{receptorID}_{dataset}_{database}_{name}_{i}.log",
     resources:
-        mpi="mpiexec"
+        mpi="mpiexec",
     shell:
         (
             "cd docking/{wildcards.receptorID}/{wildcards.dataset} ; "
             "{resources.mpi} vinalc --recList {wildcards.receptorID}.txt "
             "--ligList {wildcards.database}_{wildcards.dataset}_{wildcards.name}_{wildcards.i}.txt "
             "--geoList {wildcards.receptorID}_grid.txt --granularity {params.space} "
-        ) 
+        )
 
 
 def aggregate_in(wildcards):
@@ -137,10 +141,12 @@ rule mergeDocking:
     input:
         unpack(aggregate_in),
     output:
-        temp(path.join(
-            "docking",
-            "{receptorID}",
-            "{receptorID}_{database}_{dataset}_{name}.pdbqt.gz",
-        )),
+        temp(
+            path.join(
+                "docking",
+                "{receptorID}",
+                "{receptorID}_{database}_{dataset}_{name}.pdbqt.gz",
+            )
+        ),
     script:
         "../scripts/mergeOutput.py"

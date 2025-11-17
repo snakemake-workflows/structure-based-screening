@@ -32,9 +32,10 @@ rule targetProtein:
 rule getZINCdata:
     output:
         temp(path.join(DATABASE, "{dataset}", "{name}.pdbqt.gz")),
-    log: "logs/downloadZINC/{dataset}_{name}.log",
+    log:
+        "logs/downloadZINC/{dataset}_{name}.log",
     message:
-        "Downloading ZINC data for {wildcards.name} from ZINC database {wildcards.dataset}...",
+        "Downloading ZINC data for {wildcards.name} from ZINC database {wildcards.dataset}..."
     script:
         "../scripts/ZINCdownload.py"
 
@@ -147,6 +148,7 @@ rule gunzip:
         "logs/gunzip/{database}_{dataset}_{name}_{filetype}.log",
     run:
         import gzip, shutil, os
+
         try:
             with gzip.open(input[0], "rb") as src, open(output[0], "wb") as dst:
                 shutil.copyfileobj(src, dst)

@@ -7,8 +7,15 @@ import builtins
 import importlib
 from urllib.parse import urlparse
 
+
 # all rules in this file are local rules
-localrules: dockingResults, dockingResultsTxt, bestLigands, makeHistogram, mergeDocking
+localrules:
+    dockingResults,
+    dockingResultsTxt,
+    bestLigands,
+    makeHistogram,
+    mergeDocking,
+
 
 def url_reachable(url):
     """
@@ -47,7 +54,9 @@ def check_zinc_url(url):
                     return bool(mod.zinc_available(url))
                 except Exception:
                     # if the user function errors, fall back to default checks
-                    logger.warning(f"user zinc_available in {modname} raised an exception; falling back to default checks")
+                    logger.warning(
+                        f"user zinc_available in {modname} raised an exception; falling back to default checks"
+                    )
         except Exception:
             continue
 
@@ -83,11 +92,13 @@ def library_files(wildcards):
             out = []
             # Use ZINC_MIRROR from config if available
             zinc_mirror = config.get("ZINC_MIRROR", "files.docking.org")
-            if not zinc_mirror.startswith("http://") and not zinc_mirror.startswith("https://"):
+            if not zinc_mirror.startswith("http://") and not zinc_mirror.startswith(
+                "https://"
+            ):
                 zinc_mirror = "http://" + zinc_mirror
             zinc_mirror = zinc_mirror.rstrip("/")
             zinc_test_url = f"{zinc_mirror}/3D/"
-            
+
             # test for ZINC reachability (robust):
             if not check_zinc_url(zinc_test_url):
                 logger.info(
@@ -123,20 +134,27 @@ def library_files(wildcards):
                     )
                     sys.exit(1)
             rawOut = expand(
-                path.join(                    
+                path.join(
                     "docking",
                     "{receptorID}",
                     "{receptorID}_{database}_{dataset}_{name}.pdbqt.gz",
                 ),
                 receptorID=config["TARGETS"][0].split(",")[0],
                 database=config["DATABASE"],
-                dataset=[w+l for w in config["ZINC_INPUT"]["WEIGHT"] for l in config["ZINC_INPUT"]["LOGP"]],
-                name=[w+l+r+p+ph+c for w in config["ZINC_INPUT"]["WEIGHT"] 
-                      for l in config["ZINC_INPUT"]["LOGP"]
-                      for r in config["ZINC_INPUT"]["REACT"]
-                      for p in config["ZINC_INPUT"]["PURCHASE"]
-                      for ph in config["ZINC_INPUT"]["PH"]
-                      for c in config["ZINC_INPUT"]["CHARGE"]],
+                dataset=[
+                    w + l
+                    for w in config["ZINC_INPUT"]["WEIGHT"]
+                    for l in config["ZINC_INPUT"]["LOGP"]
+                ],
+                name=[
+                    w + l + r + p + ph + c
+                    for w in config["ZINC_INPUT"]["WEIGHT"]
+                    for l in config["ZINC_INPUT"]["LOGP"]
+                    for r in config["ZINC_INPUT"]["REACT"]
+                    for p in config["ZINC_INPUT"]["PURCHASE"]
+                    for ph in config["ZINC_INPUT"]["PH"]
+                    for c in config["ZINC_INPUT"]["CHARGE"]
+                ],
             )
             for i in rawOut:
                 weighLog = i.split("_")[-2]
@@ -183,7 +201,9 @@ def library_files(wildcards):
                 logger.warning(f"Could not connect to ZINC to validate subset: {e}")
 
             try:
-                r_zinc = requests.get("https://zinc15.docking.org/", allow_redirects=True, timeout=10)
+                r_zinc = requests.get(
+                    "https://zinc15.docking.org/", allow_redirects=True, timeout=10
+                )
                 if r_zinc.status_code != 200:  # test if ZINC database is available
                     logger.info(
                         "The ZINC database is not accessible right now. Perhaps it is temporarily down?"
@@ -291,9 +311,7 @@ rule removeDuplicateLigands:
     input:
         path.join("results", "{receptorID}_{percentage}.pdbqt"),
     output:
-        path.join(
-            "rescreening", "unique", "{receptorID}_{percentage}.pdbqt"
-        ),
+        path.join("rescreening", "unique", "{receptorID}_{percentage}.pdbqt"),
     log:
         "logs/removeDuplicateLigands_{receptorID}_{percentage}.log",
     shell:
@@ -302,13 +320,15 @@ rule removeDuplicateLigands:
 
 checkpoint split2:
     input:
-        path.join(
-            "rescreening", "unique", "{receptorID}_{percentage}.pdbqt"
-        ),
+        path.join("rescreening", "unique", "{receptorID}_{percentage}.pdbqt"),
     output:
-        temp(directory(
-            os.path.join("scratch", "rescreening_ligands_{percentage}", "{receptorID}")
-        )),
+        temp(
+            directory(
+                os.path.join(
+                    "scratch", "rescreening_ligands_{percentage}", "{receptorID}"
+                )
+            )
+        ),
     log:
         "logs/split2_{receptorID}_{percentage}.log",
     script:
@@ -321,9 +341,7 @@ rule prepareLigands2:
             "scratch", "rescreening_ligands_{percentage}", "{receptorID}", "{i}.pdbqt"
         ),
     output:
-        ligands=path.join(
-            "rescreening_{percentage}", "{name}_{receptorID}", "{i}.txt"
-        ),
+        ligands=path.join("rescreening_{percentage}", "{name}_{receptorID}", "{i}.txt"),
     log:
         "logs/prepareLigands2_{receptorID}_{percentage}_{name}_{i}.log",
     shell:
@@ -335,11 +353,9 @@ rule prepareSecondDocking:
         grid=path.join("grid", "{name}_grid.txt"),
         receptor=path.join("prepared", "receptor", "{name}.pdbqt"),
     output:
-        grid=path.join(
-            "rescreening_{percentage}", "{name}_{receptorID}", "{name}.grd"
-        ),
+        grid=path.join("rescreening_{percentage}", "{name}_{receptorID}", "{name}.grd"),
         receptor=path.join(
-           "rescreening_{percentage}", "{name}_{receptorID}", "{name}.rec"
+            "rescreening_{percentage}", "{name}_{receptorID}", "{name}.rec"
         ),
     log:
         "logs/prepareSecondDocking_{name}_{receptorID}_{percentage}.log",
@@ -352,12 +368,8 @@ rule prepareSecondDocking:
 
 rule docking2:
     input:
-        ligands=path.join(
-            "rescreening_{percentage}", "{name}_{receptorID}", "{i}.txt"
-        ),
-        grid=path.join(
-            "rescreening_{percentage}", "{name}_{receptorID}", "{name}.grd"
-        ),
+        ligands=path.join("rescreening_{percentage}", "{name}_{receptorID}", "{i}.txt"),
+        grid=path.join("rescreening_{percentage}", "{name}_{receptorID}", "{name}.grd"),
         receptor=path.join(
             "rescreening_{percentage}", "{name}_{receptorID}", "{name}.rec"
         ),
