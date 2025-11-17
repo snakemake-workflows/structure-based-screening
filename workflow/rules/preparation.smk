@@ -144,7 +144,7 @@ rule gunzip:
     conda:
         "../envs/basic.yml"
     log:
-        "logs/gunzip/{database}_{dataset}_{name}.log",
+        "logs/gunzip/{database}_{dataset}_{name}_{filetype}.log",
     run:
         import gzip, shutil, os
         try:
