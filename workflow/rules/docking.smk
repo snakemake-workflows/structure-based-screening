@@ -63,7 +63,7 @@ rule prepare_docking_ligand:
     input:
         ligands=path.join("library", "{database}_{dataset}_{name}_{i}.txt"),
     output:
-        lig=path.join(
+        temp(path.join(
             "docking",
             "{receptorID}",
             "{dataset}",
@@ -78,7 +78,7 @@ rule prepare_docking_ligand:
         outdir = os.path.join(params.directory, wildcards.receptorID, wildcards.dataset)
         os.makedirs(outdir, exist_ok=True)
 
-        shutil.copy(input.ligands, output.lig)
+        shutil.copy(input.ligands, output[0])
 
 
 rule docking:
@@ -137,10 +137,10 @@ rule mergeDocking:
     input:
         unpack(aggregate_in),
     output:
-        path.join(
+        temp(path.join(
             "docking",
             "{receptorID}",
             "{receptorID}_{database}_{dataset}_{name}.pdbqt.gz",
-        ),
+        )),
     script:
         "../scripts/mergeOutput.py"

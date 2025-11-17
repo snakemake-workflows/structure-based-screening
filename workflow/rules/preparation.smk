@@ -121,7 +121,7 @@ rule makeReceptorPDBQT:
     input:
         path.join("scratch", "PDB", "receptor", "{receptorID}.pdb"),
     output:
-        path.join("prepared", "receptor", "{receptorID}.pdbqt"),
+        temp(path.join("prepared", "receptor", "{receptorID}.pdbqt")),
     conda:
         "../envs/openbabel.yml"
     envmodules:
@@ -215,7 +215,7 @@ rule prepareGeometry:
     input:
         path.join(config["GRID_DIR"], "{receptorID}.gpf"),
     output:
-        path.join("grid", "{receptorID}_grid.txt"),
+        temp(path.join("grid", "{receptorID}_grid.txt")),
     log:
         "logs/prepareGeometry/{receptorID}.log",
     run:
@@ -253,7 +253,7 @@ rule prepareDocking:
     input:
         rules.makeReceptorPDBQT.output,
     output:
-        path.join("receptor", "{receptorID}.txt"),
+        temp(path.join("receptor", "{receptorID}.txt")),
     log:
         "logs/prepareDocking/{receptorID}.log",
     shell:
