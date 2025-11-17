@@ -32,9 +32,10 @@ rule targetProtein:
 rule getZINCdata:
     output:
         temp(path.join(DATABASE, "{dataset}", "{name}.pdbqt.gz")),
-    log: "logs/downloadZINC/{dataset}_{name}.log",
+    log:
+        "logs/downloadZINC/{dataset}_{name}.log",
     message:
-        "Downloading ZINC data for {wildcards.name} from ZINC database {wildcards.dataset}...",
+        "Downloading ZINC data for {wildcards.name} from ZINC database {wildcards.dataset}..."
     script:
         "../scripts/ZINCdownload.py"
 
@@ -121,7 +122,7 @@ rule makeReceptorPDBQT:
     input:
         path.join("scratch", "PDB", "receptor", "{receptorID}.pdb"),
     output:
-        path.join("prepared", "receptor", "{receptorID}.pdbqt"),
+        temp(path.join("prepared", "receptor", "{receptorID}.pdbqt")),
     conda:
         "../envs/openbabel.yml"
     envmodules:
@@ -147,6 +148,7 @@ rule gunzip:
         "logs/gunzip/{database}_{dataset}_{name}_{filetype}.log",
     run:
         import gzip, shutil, os
+
         try:
             with gzip.open(input[0], "rb") as src, open(output[0], "wb") as dst:
                 shutil.copyfileobj(src, dst)
@@ -215,7 +217,7 @@ rule prepareGeometry:
     input:
         path.join(config["GRID_DIR"], "{receptorID}.gpf"),
     output:
-        path.join("grid", "{receptorID}_grid.txt"),
+        temp(path.join("grid", "{receptorID}_grid.txt")),
     log:
         "logs/prepareGeometry/{receptorID}.log",
     run:
@@ -253,7 +255,7 @@ rule prepareDocking:
     input:
         rules.makeReceptorPDBQT.output,
     output:
-        path.join("receptor", "{receptorID}.txt"),
+        temp(path.join("receptor", "{receptorID}.txt")),
     log:
         "logs/prepareDocking/{receptorID}.log",
     shell:
